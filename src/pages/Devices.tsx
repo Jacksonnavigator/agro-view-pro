@@ -1,0 +1,193 @@
+// Devices listing page with filters
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useDevices } from '@/context/DeviceContext';
+import { Header } from '@/components/layout/Header';
+import { StatusIndicator } from '@/components/ui/status-indicator';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  Search, 
+  Filter, 
+  Wifi, 
+  Battery, 
+  ExternalLink,
+  Droplets,
+  Thermometer,
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { DeviceStatus } from '@/types/device';
+
+export default function Devices() {
+  const { devices, plots } = useDevices();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
+  const [plotFilter, setPlotFilter] = useState<string>('all');
+
+  // Filter devices based on search and filters
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
+      const matchesSearch = 
+        device.name.toLowerCase().includes(search.toLowerCase()) ||
+        device.plotName.toLowerCase().includes(search.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || device.status === statusFilter;
+      const matchesPlot = plotFilter === 'all' || device.plotId === plotFilter;
+
+      return matchesSearch && matchesStatus && matchesPlot;
+    });
+  }, [devices, search, statusFilter, plotFilter]);
+
+  return (
+    <div className="space-y-6 fade-in">
+      <Header 
+        title="Devices" 
+        subtitle="Manage and monitor all sensor devices"
+      />
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search devices..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DeviceStatus | 'all')}>
+                <SelectTrigger className="w-[140px]">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={plotFilter} onValueChange={setPlotFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Plots" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Plots</SelectItem>
+                  {plots.map((plot) => (
+                    <SelectItem key={plot.id} value={plot.id}>
+                      {plot.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Devices table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Device</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden md:table-cell">Moisture</TableHead>
+                <TableHead className="hidden md:table-cell">Temp</TableHead>
+                <TableHead className="hidden lg:table-cell">Signal</TableHead>
+                <TableHead className="hidden lg:table-cell">Battery</TableHead>
+                <TableHead className="hidden sm:table-cell">Last Update</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredDevices.map((device) => (
+                <TableRow key={device.id} className="group">
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{device.name}</p>
+                      <p className="text-xs text-muted-foreground">{device.plotName}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <StatusIndicator status={device.status} showLabel size="sm" />
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex items-center gap-1.5 font-mono text-sm">
+                      <Droplets className="h-3.5 w-3.5 text-chart-moisture" />
+                      {device.readings.moisture}%
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex items-center gap-1.5 font-mono text-sm">
+                      <Thermometer className="h-3.5 w-3.5 text-chart-temperature" />
+                      {device.readings.temperature}°C
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Wifi className="h-3.5 w-3.5" />
+                      {device.signalStrength}%
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Battery className="h-3.5 w-3.5" />
+                      {device.batteryLevel}%
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                    {formatDistanceToNow(device.lastUpdated, { addSuffix: true })}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Link to={`/device/${device.id}`}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {filteredDevices.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center">
+                    <p className="text-muted-foreground">No devices found</p>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
