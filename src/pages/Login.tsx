@@ -1,4 +1,4 @@
-// Login page with mock authentication
+// Login page with enhanced visuals and mock authentication
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Leaf, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Leaf, Loader2, AlertCircle, Eye, EyeOff, Sparkles, Shield } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -44,23 +44,29 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 data-grid opacity-30" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20 p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 data-grid opacity-20" />
+      <div className="absolute top-1/4 -left-32 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+      <div className="absolute bottom-1/4 -right-32 h-64 w-64 rounded-full bg-success/10 blur-3xl" />
       
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-md fade-in">
         {/* Logo and branding */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/25 mb-4">
-            <Leaf className="h-8 w-8 text-primary-foreground" />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success shadow-2xl shadow-primary/30 mb-5 group">
+            <Leaf className="h-9 w-9 text-primary-foreground transition-transform duration-300 group-hover:scale-110" />
+            <Sparkles className="absolute -right-1 -top-1 h-4 w-4 text-warning animate-pulse" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">SoilMonitor</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold tracking-tight">
+            <span className="gradient-text">SoilMonitor</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+            <Shield className="h-3.5 w-3.5" />
             IoT Soil Multi-Parameter Monitoring
           </p>
         </div>
 
-        <Card className="border-border/50 bg-card/80 backdrop-blur">
+        <Card className="border-border/30 bg-card/60 backdrop-blur-xl shadow-2xl shadow-black/20">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl font-semibold text-center">
               Welcome back
@@ -73,14 +79,14 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <Alert variant="destructive" className="py-2">
+                <Alert variant="destructive" className="py-2 border-destructive/50 bg-destructive/10">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -89,12 +95,12 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="bg-secondary"
+                  className="bg-secondary/50 border-border/50 focus:border-primary/50 transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -104,12 +110,12 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="bg-secondary pr-10"
+                    className="bg-secondary/50 border-border/50 pr-10 focus:border-primary/50 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -122,7 +128,7 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-gradient-to-r from-primary to-success hover:from-primary/90 hover:to-success/90 shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-primary/40"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -137,15 +143,16 @@ export default function Login() {
             </form>
 
             {/* Demo credentials */}
-            <div className="mt-6 rounded-lg bg-muted/50 p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-2">
+            <div className="mt-6 rounded-xl border border-border/30 bg-muted/30 p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                 Demo Credentials
               </p>
-              <div className="space-y-1 text-xs font-mono">
-                <p className="text-foreground">
+              <div className="space-y-1.5 text-xs font-mono">
+                <p className="text-foreground/80">
                   Admin: admin@soilmonitor.io / admin123
                 </p>
-                <p className="text-foreground">
+                <p className="text-foreground/80">
                   Viewer: viewer@soilmonitor.io / viewer123
                 </p>
               </div>
