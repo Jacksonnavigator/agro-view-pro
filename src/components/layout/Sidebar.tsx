@@ -16,12 +16,14 @@ import {
   ChevronLeft,
   Menu,
   Leaf,
+  GitCompare,
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { path: '/devices', label: 'Devices', icon: Cpu },
+  { path: '/compare', label: 'Compare', icon: GitCompare },
   { path: '/alerts', label: 'Alerts', icon: Bell, badge: true },
   { path: '/plots', label: 'Plots', icon: MapPin },
   { path: '/reports', label: 'Reports', icon: FileBarChart },
