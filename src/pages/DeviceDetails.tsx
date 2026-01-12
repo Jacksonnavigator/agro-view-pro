@@ -24,12 +24,13 @@ import {
   Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { TimeRange } from '@/types/device';
+import { TimeRange, SensorThresholds } from '@/types/device';
 import { useAuth } from '@/context/AuthContext';
+import { exportDevicesCSV } from '@/utils/exportUtils';
 
 export default function DeviceDetails() {
   const { id } = useParams<{ id: string }>();
-  const { getDevice, getDeviceHistory } = useDevices();
+  const { getDevice, getDeviceHistory, updateDeviceThresholds } = useDevices();
   const { hasRole } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>({ 
     label: '24H', 
@@ -38,6 +39,12 @@ export default function DeviceDetails() {
   });
 
   const device = getDevice(id || '');
+  
+  // Local threshold state for editing
+  const [editedThresholds, setEditedThresholds] = useState<SensorThresholds | null>(null);
+  
+  // Initialize edited thresholds when device loads
+  const thresholds = editedThresholds || device?.thresholds;
   
   const historicalData = useMemo(() => {
     if (!id) return [];
@@ -58,7 +65,7 @@ export default function DeviceDetails() {
     );
   }
 
-  const { readings, thresholds } = device;
+  const { readings } = device;
 
   // Determine status for each metric
   const getMetricStatus = (value: number, min: number, max: number) => {
@@ -84,7 +91,12 @@ export default function DeviceDetails() {
         title={device.name}
         subtitle={`${device.plotName} • Last updated ${format(device.lastUpdated, 'PPp')}`}
       >
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="gap-2"
+          onClick={() => device && exportDevicesCSV([device])}
+        >
           <Download className="h-4 w-4" />
           Export Data
         </Button>
@@ -211,7 +223,7 @@ export default function DeviceDetails() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {Object.entries(thresholds).map(([key, value]) => (
+              {thresholds && Object.entries(thresholds).map(([key, value]) => (
                 <div key={key} className="space-y-3">
                   <Label className="capitalize">{key}</Label>
                   <div className="flex gap-2">
@@ -219,7 +231,15 @@ export default function DeviceDetails() {
                       <span className="text-xs text-muted-foreground">Min</span>
                       <Input
                         type="number"
-                        defaultValue={value.min}
+                        value={value.min}
+                        onChange={(e) => {
+                          const newThresholds = { ...(editedThresholds || device!.thresholds) };
+                          newThresholds[key as keyof SensorThresholds] = {
+                            ...newThresholds[key as keyof SensorThresholds],
+                            min: Number(e.target.value),
+                          };
+                          setEditedThresholds(newThresholds);
+                        }}
                         className="h-8 w-full font-mono"
                       />
                     </div>
@@ -227,7 +247,15 @@ export default function DeviceDetails() {
                       <span className="text-xs text-muted-foreground">Max</span>
                       <Input
                         type="number"
-                        defaultValue={value.max}
+                        value={value.max}
+                        onChange={(e) => {
+                          const newThresholds = { ...(editedThresholds || device!.thresholds) };
+                          newThresholds[key as keyof SensorThresholds] = {
+                            ...newThresholds[key as keyof SensorThresholds],
+                            max: Number(e.target.value),
+                          };
+                          setEditedThresholds(newThresholds);
+                        }}
                         className="h-8 w-full font-mono"
                       />
                     </div>
@@ -236,7 +264,17 @@ export default function DeviceDetails() {
               ))}
             </div>
             <div className="mt-4 flex justify-end">
-              <Button size="sm">Save Thresholds</Button>
+              <Button 
+                size="sm"
+                onClick={() => {
+                  if (device && editedThresholds) {
+                    updateDeviceThresholds(device.id, editedThresholds);
+                  }
+                }}
+                disabled={!editedThresholds}
+              >
+                Save Thresholds
+              </Button>
             </div>
           </CardContent>
         </Card>

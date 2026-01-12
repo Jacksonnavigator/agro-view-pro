@@ -1,4 +1,4 @@
-// Reports and data export page
+// Reports and data export page with real CSV export functionality
 import { useState } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
@@ -21,14 +21,23 @@ import {
   FileText, 
   Calendar as CalendarIcon,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  CheckCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import {
+  exportDevicesCSV,
+  exportAlertsCSV,
+  exportHistoricalDataCSV,
+  exportDailySummary,
+  exportWeeklyReport,
+  exportMonthlyReport,
+} from '@/utils/exportUtils';
 
 export default function Reports() {
-  const { devices, plots } = useDevices();
+  const { devices, plots, alerts } = useDevices();
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -37,20 +46,104 @@ export default function Reports() {
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<string>('all');
   const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx' | 'pdf'>('csv');
+  const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = (type: string) => {
+  const handleQuickExport = async (type: 'daily' | 'weekly' | 'monthly' | 'alerts') => {
+    setIsExporting(true);
     toast({
       title: 'Export Started',
-      description: `Your ${type} report is being generated...`,
+      description: 'Generating your report...',
     });
-    
-    // Simulate export delay
-    setTimeout(() => {
+
+    // Simulate slight delay for UX
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    try {
+      switch (type) {
+        case 'daily':
+          exportDailySummary(devices);
+          break;
+        case 'weekly':
+          exportWeeklyReport(devices);
+          break;
+        case 'monthly':
+          exportMonthlyReport(devices);
+          break;
+        case 'alerts':
+          exportAlertsCSV(alerts);
+          break;
+      }
+
       toast({
         title: 'Export Complete',
-        description: `${type} report has been downloaded successfully.`,
+        description: (
+          <span className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-success" />
+            Your report has been downloaded successfully.
+          </span>
+        ),
       });
-    }, 2000);
+    } catch (error) {
+      toast({
+        title: 'Export Failed',
+        description: 'There was an error generating your report.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleCustomExport = async () => {
+    if (selectedDevices.length === 0) {
+      toast({
+        title: 'No Devices Selected',
+        description: 'Please select at least one device to export.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    toast({
+      title: 'Export Started',
+      description: 'Generating your custom report...',
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    try {
+      const selectedDeviceData = devices.filter((d) => selectedDevices.includes(d.id));
+
+      if (exportFormat === 'csv') {
+        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to);
+      } else {
+        // For xlsx and pdf, we'll use CSV as fallback with a message
+        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to);
+        toast({
+          title: 'Note',
+          description: `${exportFormat.toUpperCase()} format is exported as CSV. Full ${exportFormat.toUpperCase()} support coming soon!`,
+        });
+      }
+
+      toast({
+        title: 'Export Complete',
+        description: (
+          <span className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-success" />
+            Your custom report has been downloaded.
+          </span>
+        ),
+      });
+    } catch (error) {
+      toast({
+        title: 'Export Failed',
+        description: 'There was an error generating your report.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const toggleDevice = (deviceId: string) => {
@@ -62,12 +155,20 @@ export default function Reports() {
   };
 
   const selectAllDevices = () => {
-    if (selectedDevices.length === devices.length) {
+    const filteredDevices = devices.filter(
+      (d) => selectedPlot === 'all' || d.plotId === selectedPlot
+    );
+    if (selectedDevices.length === filteredDevices.length) {
       setSelectedDevices([]);
     } else {
-      setSelectedDevices(devices.map((d) => d.id));
+      setSelectedDevices(filteredDevices.map((d) => d.id));
     }
   };
+
+  // Filter devices when plot changes
+  const filteredDevices = devices.filter(
+    (d) => selectedPlot === 'all' || d.plotId === selectedPlot
+  );
 
   return (
     <div className="space-y-6 fade-in">
@@ -79,8 +180,11 @@ export default function Reports() {
       {/* Quick export cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card 
-          className="cursor-pointer card-hover border-border/50"
-          onClick={() => handleExport('Daily Summary')}
+          className={cn(
+            'cursor-pointer card-hover border-border/50',
+            isExporting && 'opacity-50 pointer-events-none'
+          )}
+          onClick={() => handleQuickExport('daily')}
         >
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -96,8 +200,11 @@ export default function Reports() {
         </Card>
 
         <Card 
-          className="cursor-pointer card-hover border-border/50"
-          onClick={() => handleExport('Weekly Report')}
+          className={cn(
+            'cursor-pointer card-hover border-border/50',
+            isExporting && 'opacity-50 pointer-events-none'
+          )}
+          onClick={() => handleQuickExport('weekly')}
         >
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -113,8 +220,11 @@ export default function Reports() {
         </Card>
 
         <Card 
-          className="cursor-pointer card-hover border-border/50"
-          onClick={() => handleExport('Monthly Analysis')}
+          className={cn(
+            'cursor-pointer card-hover border-border/50',
+            isExporting && 'opacity-50 pointer-events-none'
+          )}
+          onClick={() => handleQuickExport('monthly')}
         >
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -130,8 +240,11 @@ export default function Reports() {
         </Card>
 
         <Card 
-          className="cursor-pointer card-hover border-border/50"
-          onClick={() => handleExport('Alert History')}
+          className={cn(
+            'cursor-pointer card-hover border-border/50',
+            isExporting && 'opacity-50 pointer-events-none'
+          )}
+          onClick={() => handleQuickExport('alerts')}
         >
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -146,6 +259,33 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick device export */}
+      <Card className="border-border/50">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="rounded-lg bg-secondary p-3">
+                <Download className="h-6 w-6 text-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">Export Current Device Status</p>
+                <p className="text-sm text-muted-foreground">
+                  Download current readings for all {devices.length} devices
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => exportDevicesCSV(devices)}
+              disabled={isExporting}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Custom report builder */}
       <Card>
@@ -232,15 +372,13 @@ export default function Reports() {
           {/* Device selection */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Select Devices</Label>
+              <Label>Select Devices ({selectedDevices.length} selected)</Label>
               <Button variant="ghost" size="sm" onClick={selectAllDevices}>
-                {selectedDevices.length === devices.length ? 'Deselect All' : 'Select All'}
+                {selectedDevices.length === filteredDevices.length ? 'Deselect All' : 'Select All'}
               </Button>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {devices
-                .filter((d) => selectedPlot === 'all' || d.plotId === selectedPlot)
-                .map((device) => (
+              {filteredDevices.map((device) => (
                   <div
                     key={device.id}
                     className={cn(
@@ -281,12 +419,12 @@ export default function Reports() {
             </div>
 
             <Button 
-              onClick={() => handleExport('Custom Report')} 
+              onClick={handleCustomExport} 
               className="gap-2"
-              disabled={selectedDevices.length === 0}
+              disabled={selectedDevices.length === 0 || isExporting}
             >
               <Download className="h-4 w-4" />
-              Generate Report
+              {isExporting ? 'Generating...' : 'Generate Report'}
             </Button>
           </div>
         </CardContent>

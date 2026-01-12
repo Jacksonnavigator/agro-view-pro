@@ -1,6 +1,6 @@
-// Device data context with simulated real-time updates
+// Device data context with simulated real-time updates and threshold management
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { Device, Alert, Plot, HistoricalReading } from '@/types/device';
+import { Device, Alert, Plot, HistoricalReading, SensorThresholds } from '@/types/device';
 import { 
   initialDevices, 
   initialAlerts, 
@@ -9,6 +9,7 @@ import {
   generateAlerts,
   generateHistoricalData 
 } from '@/data/mockData';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeviceContextType {
   devices: Device[];
@@ -20,8 +21,10 @@ interface DeviceContextType {
   getDevice: (id: string) => Device | undefined;
   getDeviceHistory: (id: string, hours: number) => HistoricalReading[];
   acknowledgeAlert: (alertId: string) => void;
+  acknowledgeAllAlerts: () => void;
   getPlotDevices: (plotId: string) => Device[];
   unacknowledgedAlertCount: number;
+  updateDeviceThresholds: (deviceId: string, thresholds: SensorThresholds) => void;
 }
 
 const DeviceContext = createContext<DeviceContextType | undefined>(undefined);
@@ -34,6 +37,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const { toast } = useToast();
 
   // Refresh data (simulate API fetch)
   const refreshData = useCallback(async () => {
@@ -45,7 +49,15 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     const newDevices = generateDevices();
     const newAlerts = generateAlerts(newDevices);
     
-    setDevices(newDevices);
+    // Preserve custom thresholds
+    setDevices((prevDevices) => {
+      const thresholdMap = new Map(prevDevices.map((d) => [d.id, d.thresholds]));
+      return newDevices.map((device) => ({
+        ...device,
+        thresholds: thresholdMap.get(device.id) || device.thresholds,
+      }));
+    });
+    
     setAlerts((prev) => {
       // Merge new alerts with existing (keep acknowledged status)
       const acknowledgedIds = new Set(prev.filter((a) => a.acknowledged).map((a) => a.id));
@@ -87,6 +99,17 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // Acknowledge all alerts
+  const acknowledgeAllAlerts = useCallback(() => {
+    setAlerts((prev) =>
+      prev.map((alert) => ({ ...alert, acknowledged: true }))
+    );
+    toast({
+      title: 'All Alerts Acknowledged',
+      description: 'All pending alerts have been marked as acknowledged.',
+    });
+  }, [toast]);
+
   // Get devices for a specific plot
   const getPlotDevices = useCallback(
     (plotId: string): Device[] => {
@@ -95,6 +118,22 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       return devices.filter((d) => plot.deviceIds.includes(d.id));
     },
     [devices]
+  );
+
+  // Update device thresholds
+  const updateDeviceThresholds = useCallback(
+    (deviceId: string, thresholds: SensorThresholds) => {
+      setDevices((prev) =>
+        prev.map((device) =>
+          device.id === deviceId ? { ...device, thresholds } : device
+        )
+      );
+      toast({
+        title: 'Thresholds Updated',
+        description: 'Device thresholds have been saved successfully.',
+      });
+    },
+    [toast]
   );
 
   // Count unacknowledged alerts
@@ -112,8 +151,10 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
         getDevice,
         getDeviceHistory,
         acknowledgeAlert,
+        acknowledgeAllAlerts,
         getPlotDevices,
         unacknowledgedAlertCount,
+        updateDeviceThresholds,
       }}
     >
       {children}
