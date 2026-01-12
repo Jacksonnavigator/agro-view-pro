@@ -5,6 +5,9 @@
 /* IoT Dashboard Design System - Dark Industrial Theme */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
 @layer base {
   :root {
     /* Dark industrial theme - earthy greens with dark slate */
