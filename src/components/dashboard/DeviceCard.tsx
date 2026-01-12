@@ -1,4 +1,4 @@
-// Device overview card component
+// Device overview card component with enhanced visuals
 import { Link } from 'react-router-dom';
 import { Device } from '@/types/device';
 import { StatusIndicator } from '@/components/ui/status-indicator';
@@ -12,7 +12,8 @@ import {
   Wifi, 
   Battery, 
   Clock,
-  ChevronRight 
+  ChevronRight,
+  Signal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,9 +35,27 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
   const phStatus = isOutOfRange(readings.ph, thresholds.ph.min, thresholds.ph.max);
   const ecStatus = isOutOfRange(readings.ec, thresholds.ec.min, thresholds.ec.max);
 
+  const statusGlow = {
+    online: 'hover:shadow-[0_0_30px_hsl(145_70%_45%/0.15)]',
+    warning: 'hover:shadow-[0_0_30px_hsl(38_92%_50%/0.15)]',
+    offline: 'hover:shadow-[0_0_30px_hsl(0_72%_51%/0.15)]',
+  };
+
   return (
-    <Card className={cn('card-hover group', className)}>
-      <CardHeader className="pb-3">
+    <Card className={cn(
+      'group relative overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1',
+      statusGlow[device.status],
+      className
+    )}>
+      {/* Status accent line */}
+      <div className={cn(
+        'absolute left-0 top-0 h-full w-1 transition-all duration-300',
+        device.status === 'online' && 'bg-success',
+        device.status === 'warning' && 'bg-warning',
+        device.status === 'offline' && 'bg-destructive'
+      )} />
+
+      <CardHeader className="pb-3 pl-5">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -45,81 +64,105 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             </div>
             <p className="text-sm text-muted-foreground">{device.plotName}</p>
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <div className="flex items-center gap-1" title="Signal Strength">
-              <Wifi className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="flex items-center gap-1.5" title="Signal Strength">
+              <Signal className={cn(
+                'h-3.5 w-3.5',
+                device.signalStrength > 70 ? 'text-success' : 
+                device.signalStrength > 40 ? 'text-warning' : 'text-destructive'
+              )} />
               <span className="text-xs font-mono">{device.signalStrength}%</span>
             </div>
-            <div className="flex items-center gap-1" title="Battery Level">
-              <Battery className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5" title="Battery Level">
+              <Battery className={cn(
+                'h-3.5 w-3.5',
+                device.batteryLevel > 50 ? 'text-success' : 
+                device.batteryLevel > 20 ? 'text-warning' : 'text-destructive'
+              )} />
               <span className="text-xs font-mono">{device.batteryLevel}%</span>
             </div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pl-5">
         {/* Sensor readings grid */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {/* Moisture */}
           <div className={cn(
-            'rounded-lg border p-3 transition-colors',
-            moistureStatus ? 'border-warning/50 bg-warning/5' : 'border-border'
+            'rounded-xl border p-3 transition-all duration-200',
+            moistureStatus 
+              ? 'border-warning/40 bg-warning/5' 
+              : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Droplets className="h-4 w-4 text-chart-moisture" />
-              <span className="text-xs">Moisture</span>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-info/10 p-1.5">
+                <Droplets className="h-3.5 w-3.5 text-info" />
+              </div>
+              <span className="text-xs text-muted-foreground">Moisture</span>
             </div>
-            <p className="mt-1 font-mono text-lg font-semibold">
-              {readings.moisture}%
+            <p className="mt-2 font-mono text-xl font-bold tracking-tight">
+              {readings.moisture}<span className="text-sm font-normal text-muted-foreground">%</span>
             </p>
           </div>
 
           {/* Temperature */}
           <div className={cn(
-            'rounded-lg border p-3 transition-colors',
-            tempStatus ? 'border-warning/50 bg-warning/5' : 'border-border'
+            'rounded-xl border p-3 transition-all duration-200',
+            tempStatus 
+              ? 'border-warning/40 bg-warning/5' 
+              : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Thermometer className="h-4 w-4 text-chart-temperature" />
-              <span className="text-xs">Temperature</span>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-destructive/10 p-1.5">
+                <Thermometer className="h-3.5 w-3.5 text-destructive" />
+              </div>
+              <span className="text-xs text-muted-foreground">Temp</span>
             </div>
-            <p className="mt-1 font-mono text-lg font-semibold">
-              {readings.temperature}°C
+            <p className="mt-2 font-mono text-xl font-bold tracking-tight">
+              {readings.temperature}<span className="text-sm font-normal text-muted-foreground">°C</span>
             </p>
           </div>
 
           {/* pH */}
           <div className={cn(
-            'rounded-lg border p-3 transition-colors',
-            phStatus ? 'border-warning/50 bg-warning/5' : 'border-border'
+            'rounded-xl border p-3 transition-all duration-200',
+            phStatus 
+              ? 'border-warning/40 bg-warning/5' 
+              : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <FlaskConical className="h-4 w-4 text-chart-ph" />
-              <span className="text-xs">pH Level</span>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-success/10 p-1.5">
+                <FlaskConical className="h-3.5 w-3.5 text-success" />
+              </div>
+              <span className="text-xs text-muted-foreground">pH</span>
             </div>
-            <p className="mt-1 font-mono text-lg font-semibold">
+            <p className="mt-2 font-mono text-xl font-bold tracking-tight">
               {readings.ph}
             </p>
           </div>
 
           {/* EC */}
           <div className={cn(
-            'rounded-lg border p-3 transition-colors',
-            ecStatus ? 'border-warning/50 bg-warning/5' : 'border-border'
+            'rounded-xl border p-3 transition-all duration-200',
+            ecStatus 
+              ? 'border-warning/40 bg-warning/5' 
+              : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Zap className="h-4 w-4 text-chart-ec" />
-              <span className="text-xs">EC</span>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-purple-500/10 p-1.5">
+                <Zap className="h-3.5 w-3.5 text-purple-400" />
+              </div>
+              <span className="text-xs text-muted-foreground">EC</span>
             </div>
-            <p className="mt-1 font-mono text-lg font-semibold">
-              {readings.ec} mS/cm
+            <p className="mt-2 font-mono text-xl font-bold tracking-tight">
+              {readings.ec}<span className="text-sm font-normal text-muted-foreground">mS</span>
             </p>
           </div>
         </div>
 
         {/* Footer with timestamp and action */}
-        <div className="flex items-center justify-between pt-2 border-t border-border">
+        <div className="flex items-center justify-between pt-2 border-t border-border/30">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
             <span>{formatDistanceToNow(device.lastUpdated, { addSuffix: true })}</span>
@@ -128,10 +171,10 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             variant="ghost" 
             size="sm" 
             asChild
-            className="gap-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+            className="gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-primary/10"
           >
             <Link to={`/device/${device.id}`}>
-              Details
+              View Details
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
