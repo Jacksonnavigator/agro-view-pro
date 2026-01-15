@@ -1,4 +1,4 @@
-// Device and sensor data types for the IoT monitoring system
+// Device and sensor data types for the IoT soil monitoring system
 
 export type DeviceStatus = 'online' | 'warning' | 'offline';
 

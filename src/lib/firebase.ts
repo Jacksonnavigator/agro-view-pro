@@ -1,4 +1,4 @@
-// Firebase configuration and initialization
+// Firebase configuration and initialization for IoT soil monitoring
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, query, orderByKey, limitToLast } from "firebase/database";
 
