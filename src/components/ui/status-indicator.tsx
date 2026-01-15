@@ -33,16 +33,16 @@ const sizeConfig = {
   lg: 'h-4 w-4',
 };
 
-export function StatusIndicator({ 
-  status, 
-  size = 'md', 
-  showLabel = false, 
-  className 
-}: StatusIndicatorProps) {
+import * as React from 'react';
+
+export const StatusIndicator = React.forwardRef<
+  HTMLDivElement,
+  StatusIndicatorProps
+>(({ status, size = 'md', showLabel = false, className }, ref) => {
   const config = statusConfig[status];
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div ref={ref} className={cn('flex items-center gap-2', className)}>
       <div className="relative">
         {/* Pulse animation for online/warning status */}
         {status !== 'offline' && (
@@ -69,4 +69,6 @@ export function StatusIndicator({
       )}
     </div>
   );
-}
+});
+
+StatusIndicator.displayName = 'StatusIndicator';
