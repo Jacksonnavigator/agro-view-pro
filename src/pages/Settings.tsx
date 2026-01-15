@@ -1,4 +1,5 @@
 // Settings page (admin only)
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -19,22 +20,138 @@ import {
   Save,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { SensorThresholds } from '@/types/device';
+
+interface SettingsState {
+  notifications: {
+    email: boolean;
+    sms: boolean;
+    push: boolean;
+  };
+  smsConfig: {
+    primary: string;
+    secondary: string;
+    criticalOnly: boolean;
+  };
+  thresholds: SensorThresholds;
+  system: {
+    refreshInterval: number;
+    retention: number;
+    offlineDetection: boolean;
+  };
+  account: {
+    reportEmail: string;
+  };
+}
+
+const defaultSettings: SettingsState = {
+  notifications: {
+    email: true,
+    sms: true,
+    push: false,
+  },
+  smsConfig: {
+    primary: '',
+    secondary: '',
+    criticalOnly: true,
+  },
+  thresholds: {
+    moisture: { min: 30, max: 70 },
+    temperature: { min: 15, max: 35 },
+    ph: { min: 5.5, max: 7.5 },
+    ec: { min: 0.5, max: 2.5 },
+  },
+  system: {
+    refreshInterval: 30,
+    retention: 90,
+    offlineDetection: true,
+  },
+  account: {
+    reportEmail: '',
+  },
+};
 
 export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Load settings from localStorage
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('user_settings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings({ ...defaultSettings, ...parsed });
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    } else if (user?.email) {
+      // Initialize report email with user email if not set
+      setSettings(prev => ({
+        ...prev,
+        account: { ...prev.account, reportEmail: user.email }
+      }));
+    }
+    setHasLoaded(true);
+  }, [user]);
 
   const handleSave = () => {
+    localStorage.setItem('user_settings', JSON.stringify(settings));
     toast({
       title: 'Settings Saved',
-      description: 'Your settings have been updated successfully.',
+      description: 'Your settings have been updated successfully and saved to local storage.',
     });
   };
 
+  const updateNotification = (key: keyof SettingsState['notifications'], value: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      notifications: { ...prev.notifications, [key]: value }
+    }));
+  };
+
+  const updateSmsConfig = (key: keyof SettingsState['smsConfig'], value: string | boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      smsConfig: { ...prev.smsConfig, [key]: value }
+    }));
+  };
+
+  const updateThreshold = (sensor: keyof SensorThresholds, bound: 'min' | 'max', value: string) => {
+    const numValue = parseFloat(value);
+    setSettings(prev => ({
+      ...prev,
+      thresholds: {
+        ...prev.thresholds,
+        [sensor]: { ...prev.thresholds[sensor], [bound]: numValue }
+      }
+    }));
+  };
+
+  const updateSystem = (key: keyof SettingsState['system'], value: number | boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      system: { ...prev.system, [key]: value }
+    }));
+  };
+
+  const updateAccount = (key: keyof SettingsState['account'], value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      account: { ...prev.account, [key]: value }
+    }));
+  };
+
+  if (!hasLoaded) {
+    return null; // Or a loading spinner
+  }
+
   return (
     <div className="space-y-6 fade-in">
-      <Header 
-        title="Settings" 
+      <Header
+        title="Settings"
         subtitle="Configure system preferences and notifications"
       />
 
@@ -66,7 +183,10 @@ export default function Settings() {
                     Receive alerts via email
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.notifications.email}
+                  onCheckedChange={(c) => updateNotification('email', c)}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -76,7 +196,10 @@ export default function Settings() {
                     Send SMS for critical alerts
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.notifications.sms}
+                  onCheckedChange={(c) => updateNotification('sms', c)}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -86,7 +209,10 @@ export default function Settings() {
                     Browser push notifications
                   </p>
                 </div>
-                <Switch />
+                <Switch
+                  checked={settings.notifications.push}
+                  onCheckedChange={(c) => updateNotification('push', c)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -102,11 +228,21 @@ export default function Settings() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="sms-primary">Primary Phone Number</Label>
-                  <Input id="sms-primary" placeholder="+1 (555) 123-4567" />
+                  <Input
+                    id="sms-primary"
+                    placeholder="+1 (555) 123-4567"
+                    value={settings.smsConfig.primary}
+                    onChange={(e) => updateSmsConfig('primary', e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sms-secondary">Secondary Phone Number</Label>
-                  <Input id="sms-secondary" placeholder="+1 (555) 987-6543" />
+                  <Input
+                    id="sms-secondary"
+                    placeholder="+1 (555) 987-6543"
+                    value={settings.smsConfig.secondary}
+                    onChange={(e) => updateSmsConfig('secondary', e.target.value)}
+                  />
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -116,7 +252,10 @@ export default function Settings() {
                     Only send SMS for critical severity alerts
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.smsConfig.criticalOnly}
+                  onCheckedChange={(c) => updateSmsConfig('criticalOnly', c)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -138,11 +277,21 @@ export default function Settings() {
                   <div className="flex gap-4">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Min</span>
-                      <Input type="number" defaultValue={30} className="font-mono" />
+                      <Input
+                        type="number"
+                        value={settings.thresholds.moisture.min}
+                        onChange={(e) => updateThreshold('moisture', 'min', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Max</span>
-                      <Input type="number" defaultValue={70} className="font-mono" />
+                      <Input
+                        type="number"
+                        value={settings.thresholds.moisture.max}
+                        onChange={(e) => updateThreshold('moisture', 'max', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -152,11 +301,21 @@ export default function Settings() {
                   <div className="flex gap-4">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Min</span>
-                      <Input type="number" defaultValue={15} className="font-mono" />
+                      <Input
+                        type="number"
+                        value={settings.thresholds.temperature.min}
+                        onChange={(e) => updateThreshold('temperature', 'min', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Max</span>
-                      <Input type="number" defaultValue={35} className="font-mono" />
+                      <Input
+                        type="number"
+                        value={settings.thresholds.temperature.max}
+                        onChange={(e) => updateThreshold('temperature', 'max', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -166,11 +325,23 @@ export default function Settings() {
                   <div className="flex gap-4">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Min</span>
-                      <Input type="number" step="0.1" defaultValue={5.5} className="font-mono" />
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settings.thresholds.ph.min}
+                        onChange={(e) => updateThreshold('ph', 'min', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Max</span>
-                      <Input type="number" step="0.1" defaultValue={7.5} className="font-mono" />
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settings.thresholds.ph.max}
+                        onChange={(e) => updateThreshold('ph', 'max', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -180,11 +351,23 @@ export default function Settings() {
                   <div className="flex gap-4">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Min</span>
-                      <Input type="number" step="0.1" defaultValue={0.5} className="font-mono" />
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settings.thresholds.ec.min}
+                        onChange={(e) => updateThreshold('ec', 'min', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">Max</span>
-                      <Input type="number" step="0.1" defaultValue={2.5} className="font-mono" />
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={settings.thresholds.ec.max}
+                        onChange={(e) => updateThreshold('ec', 'max', e.target.value)}
+                        className="font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -206,7 +389,12 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label>Auto-refresh Interval</Label>
                 <div className="flex gap-2 items-center">
-                  <Input type="number" defaultValue={30} className="w-24 font-mono" />
+                  <Input
+                    type="number"
+                    value={settings.system.refreshInterval}
+                    onChange={(e) => updateSystem('refreshInterval', parseInt(e.target.value) || 30)}
+                    className="w-24 font-mono"
+                  />
                   <span className="text-sm text-muted-foreground">seconds</span>
                 </div>
               </div>
@@ -224,7 +412,12 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label>Keep historical data for</Label>
                 <div className="flex gap-2 items-center">
-                  <Input type="number" defaultValue={90} className="w-24 font-mono" />
+                  <Input
+                    type="number"
+                    value={settings.system.retention}
+                    onChange={(e) => updateSystem('retention', parseInt(e.target.value) || 90)}
+                    className="w-24 font-mono"
+                  />
                   <span className="text-sm text-muted-foreground">days</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -249,7 +442,10 @@ export default function Settings() {
                     Mark device offline after no data for 5 minutes
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={settings.system.offlineDetection}
+                  onCheckedChange={(c) => updateSystem('offlineDetection', c)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -268,11 +464,11 @@ export default function Settings() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Name</Label>
-                  <Input defaultValue={user?.name} />
+                  <Input defaultValue={user?.name} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
-                  <Input defaultValue={user?.email} type="email" />
+                  <Input defaultValue={user?.email} type="email" disabled />
                 </div>
               </div>
               <div className="space-y-2">
@@ -292,7 +488,11 @@ export default function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Report Email Address</Label>
-                <Input defaultValue={user?.email} type="email" />
+                <Input
+                  value={settings.account.reportEmail}
+                  onChange={(e) => updateAccount('reportEmail', e.target.value)}
+                  type="email"
+                />
                 <p className="text-xs text-muted-foreground">
                   Scheduled reports will be sent to this address
                 </p>

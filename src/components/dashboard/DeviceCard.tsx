@@ -4,13 +4,13 @@ import { Device } from '@/types/device';
 import { StatusIndicator } from '@/components/ui/status-indicator';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Droplets, 
-  Thermometer, 
-  FlaskConical, 
-  Zap, 
-  Wifi, 
-  Battery, 
+import {
+  Droplets,
+  Thermometer,
+  FlaskConical,
+  Zap,
+  Wifi,
+  Battery,
   Clock,
   ChevronRight,
   Signal
@@ -26,14 +26,22 @@ interface DeviceCardProps {
 export function DeviceCard({ device, className }: DeviceCardProps) {
   const { readings, thresholds } = device;
 
+  // Safety check for readings
+  const safeReadings = {
+    moisture: readings?.moisture ?? 0,
+    temperature: readings?.temperature ?? 0,
+    ph: readings?.ph ?? 7,
+    ec: readings?.ec ?? 0,
+  };
+
   // Check if value is out of threshold
-  const isOutOfRange = (value: number, min: number, max: number) => 
+  const isOutOfRange = (value: number, min: number, max: number) =>
     value < min || value > max;
 
-  const moistureStatus = isOutOfRange(readings.moisture, thresholds.moisture.min, thresholds.moisture.max);
-  const tempStatus = isOutOfRange(readings.temperature, thresholds.temperature.min, thresholds.temperature.max);
-  const phStatus = isOutOfRange(readings.ph, thresholds.ph.min, thresholds.ph.max);
-  const ecStatus = isOutOfRange(readings.ec, thresholds.ec.min, thresholds.ec.max);
+  const moistureStatus = isOutOfRange(safeReadings.moisture, thresholds.moisture.min, thresholds.moisture.max);
+  const tempStatus = isOutOfRange(safeReadings.temperature, thresholds.temperature.min, thresholds.temperature.max);
+  const phStatus = isOutOfRange(safeReadings.ph, thresholds.ph.min, thresholds.ph.max);
+  const ecStatus = isOutOfRange(safeReadings.ec, thresholds.ec.min, thresholds.ec.max);
 
   const statusGlow = {
     online: 'hover:shadow-[0_0_30px_hsl(145_70%_45%/0.15)]',
@@ -68,16 +76,16 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             <div className="flex items-center gap-1.5" title="Signal Strength">
               <Signal className={cn(
                 'h-3.5 w-3.5',
-                device.signalStrength > 70 ? 'text-success' : 
-                device.signalStrength > 40 ? 'text-warning' : 'text-destructive'
+                device.signalStrength > 70 ? 'text-success' :
+                  device.signalStrength > 40 ? 'text-warning' : 'text-destructive'
               )} />
               <span className="text-xs font-mono">{device.signalStrength}%</span>
             </div>
             <div className="flex items-center gap-1.5" title="Battery Level">
               <Battery className={cn(
                 'h-3.5 w-3.5',
-                device.batteryLevel > 50 ? 'text-success' : 
-                device.batteryLevel > 20 ? 'text-warning' : 'text-destructive'
+                device.batteryLevel > 50 ? 'text-success' :
+                  device.batteryLevel > 20 ? 'text-warning' : 'text-destructive'
               )} />
               <span className="text-xs font-mono">{device.batteryLevel}%</span>
             </div>
@@ -91,8 +99,8 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
           {/* Moisture */}
           <div className={cn(
             'rounded-xl border p-3 transition-all duration-200',
-            moistureStatus 
-              ? 'border-warning/40 bg-warning/5' 
+            moistureStatus
+              ? 'border-warning/40 bg-warning/5'
               : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
             <div className="flex items-center gap-2">
@@ -102,15 +110,15 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
               <span className="text-xs text-muted-foreground">Moisture</span>
             </div>
             <p className="mt-2 font-mono text-xl font-bold tracking-tight">
-              {readings.moisture}<span className="text-sm font-normal text-muted-foreground">%</span>
+              {safeReadings.moisture}<span className="text-sm font-normal text-muted-foreground">%</span>
             </p>
           </div>
 
           {/* Temperature */}
           <div className={cn(
             'rounded-xl border p-3 transition-all duration-200',
-            tempStatus 
-              ? 'border-warning/40 bg-warning/5' 
+            tempStatus
+              ? 'border-warning/40 bg-warning/5'
               : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
             <div className="flex items-center gap-2">
@@ -120,15 +128,15 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
               <span className="text-xs text-muted-foreground">Temp</span>
             </div>
             <p className="mt-2 font-mono text-xl font-bold tracking-tight">
-              {readings.temperature}<span className="text-sm font-normal text-muted-foreground">°C</span>
+              {safeReadings.temperature}<span className="text-sm font-normal text-muted-foreground">°C</span>
             </p>
           </div>
 
           {/* pH */}
           <div className={cn(
             'rounded-xl border p-3 transition-all duration-200',
-            phStatus 
-              ? 'border-warning/40 bg-warning/5' 
+            phStatus
+              ? 'border-warning/40 bg-warning/5'
               : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
             <div className="flex items-center gap-2">
@@ -138,15 +146,15 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
               <span className="text-xs text-muted-foreground">pH</span>
             </div>
             <p className="mt-2 font-mono text-xl font-bold tracking-tight">
-              {readings.ph}
+              {safeReadings.ph}
             </p>
           </div>
 
           {/* EC */}
           <div className={cn(
             'rounded-xl border p-3 transition-all duration-200',
-            ecStatus 
-              ? 'border-warning/40 bg-warning/5' 
+            ecStatus
+              ? 'border-warning/40 bg-warning/5'
               : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
           )}>
             <div className="flex items-center gap-2">
@@ -156,7 +164,7 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
               <span className="text-xs text-muted-foreground">EC</span>
             </div>
             <p className="mt-2 font-mono text-xl font-bold tracking-tight">
-              {readings.ec}<span className="text-sm font-normal text-muted-foreground">mS</span>
+              {safeReadings.ec}<span className="text-sm font-normal text-muted-foreground">mS</span>
             </p>
           </div>
         </div>
@@ -167,9 +175,9 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             <Clock className="h-3.5 w-3.5" />
             <span>{formatDistanceToNow(device.lastUpdated, { addSuffix: true })}</span>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             asChild
             className="gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-primary/10"
           >

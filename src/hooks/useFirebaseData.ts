@@ -1,6 +1,6 @@
 // Hook to subscribe to Firebase Realtime Database for sensor data
-import { useEffect, useState, useCallback } from 'react';
-import { database, ref, onValue, query, orderByKey, limitToLast } from '@/lib/firebase';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { database, ref, onValue } from '@/lib/firebase';
 import { Device, Alert, HistoricalReading, SensorReading, SensorThresholds } from '@/types/device';
 
 // Firebase data structure types
@@ -19,8 +19,8 @@ interface FirebaseDevicesData {
   [plotId: string]: FirebasePlotData;
 }
 
-// Default thresholds for soil parameters
-const defaultThresholds: SensorThresholds = {
+// Fallback thresholds if not in localStorage
+const fallbackThresholds: SensorThresholds = {
   moisture: { min: 30, max: 70 },
   temperature: { min: 15, max: 35 },
   ph: { min: 5.5, max: 7.5 },
@@ -38,7 +38,7 @@ const plotConfigs: Record<string, { name: string; description: string }> = {
 // Determine device status based on readings
 const getDeviceStatus = (readings: SensorReading, thresholds: SensorThresholds): Device['status'] => {
   const issues: string[] = [];
-  
+
   if (readings.moisture < thresholds.moisture.min || readings.moisture > thresholds.moisture.max) {
     issues.push('moisture');
   }
@@ -76,7 +76,7 @@ const generateAlertsFromReadings = (devices: Device[]): Alert[] => {
     parameters.forEach((param) => {
       const value = device.readings[param] as number;
       const threshold = device.thresholds[param as keyof SensorThresholds];
-      
+
       if (threshold && value !== undefined) {
         let severity: Alert['severity'] = 'info';
         let isAlert = false;
@@ -122,6 +122,22 @@ export function useFirebaseData() {
   const [error, setError] = useState<string | null>(null);
   const [customThresholds, setCustomThresholds] = useState<Map<string, SensorThresholds>>(new Map());
 
+  // Retrieve global default thresholds from localStorage or use fallback
+  const defaultThresholds = useMemo(() => {
+    const saved = localStorage.getItem('user_settings');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.thresholds) {
+          return parsed.thresholds as SensorThresholds;
+        }
+      } catch (e) {
+        console.error('Failed to parse settings for thresholds', e);
+      }
+    }
+    return fallbackThresholds;
+  }, [lastRefresh]); // Re-read when refresh happens (hacky way to update if settings changed)
+
   // Transform Firebase data to Device array
   const transformFirebaseData = useCallback((data: FirebaseDevicesData): Device[] => {
     const devicesList: Device[] = [];
@@ -131,12 +147,12 @@ export function useFirebaseData() {
       // Get the latest reading for this plot
       const timestamps = Object.keys(plotData).sort();
       const latestTimestamp = timestamps[timestamps.length - 1];
-      
+
       if (latestTimestamp && plotData[latestTimestamp]) {
         const reading = plotData[latestTimestamp];
         const deviceId = `device-${plotId}`;
         const thresholds = customThresholds.get(deviceId) || defaultThresholds;
-        
+
         const sensorReading: SensorReading = {
           moisture: reading.moisture ?? 0,
           temperature: reading.temperature ?? 0,
@@ -145,9 +161,9 @@ export function useFirebaseData() {
         };
 
         const status = getDeviceStatus(sensorReading, thresholds);
-        const plotConfig = plotConfigs[plotId] || { 
-          name: plotId.replace(/_/g, ' '), 
-          description: 'Monitoring zone' 
+        const plotConfig = plotConfigs[plotId] || {
+          name: plotId.replace(/_/g, ' '),
+          description: 'Monitoring zone'
         };
 
         devicesList.push({
@@ -172,7 +188,7 @@ export function useFirebaseData() {
     });
 
     return devicesList;
-  }, [customThresholds]);
+  }, [customThresholds, defaultThresholds]);
 
   // Subscribe to Firebase Realtime Database
   useEffect(() => {
@@ -183,7 +199,7 @@ export function useFirebaseData() {
       devicesRef,
       (snapshot) => {
         const data = snapshot.val() as FirebaseDevicesData | null;
-        
+
         if (data) {
           const transformedDevices = transformFirebaseData(data);
           setDevices(transformedDevices);
@@ -193,7 +209,7 @@ export function useFirebaseData() {
           setDevices([]);
           setAlerts([]);
         }
-        
+
         setLastRefresh(new Date());
         setIsLoading(false);
       },
@@ -209,9 +225,6 @@ export function useFirebaseData() {
 
   // Get historical data for a device from Firebase
   const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
-    const plotId = deviceId.replace('device-', '');
-    const historicalData: HistoricalReading[] = [];
-    
     // For now, we'll generate synthetic historical data based on current readings
     // In a real implementation, you'd query Firebase for historical timestamps
     const device = devices.find(d => d.id === deviceId);
@@ -219,11 +232,12 @@ export function useFirebaseData() {
 
     const now = Date.now();
     const interval = (hours * 60 * 60 * 1000) / 100;
-    
+
     let baseMoisture = device.readings.moisture;
     let baseTemp = device.readings.temperature;
     let basePh = device.readings.ph;
     let baseEc = device.readings.ec;
+    const historicalData: HistoricalReading[] = [];
 
     for (let i = 100; i >= 0; i--) {
       baseMoisture += (Math.random() - 0.5) * 4;
@@ -262,6 +276,8 @@ export function useFirebaseData() {
   // Manual refresh (forces re-fetch)
   const refreshData = useCallback(() => {
     setLastRefresh(new Date());
+    // In a real scenario, this might force a re-fetch if we weren't using real-time subscription
+    // But here it triggers a re-read of localStorage due to dependency in defaultThresholds
   }, []);
 
   return {
