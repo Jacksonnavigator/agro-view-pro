@@ -1,5 +1,5 @@
-// Plots/Location view page with interactive map
-import { useState } from 'react';
+// Plots/Location view page with interactive map and error handling
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceMap } from '@/components/dashboard/DeviceMap';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
 import { 
   MapPin, 
   Cpu, 
@@ -23,19 +25,23 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function Plots() {
-  const { plots, devices, getPlotDevices } = useDevices();
+  const { plots, devices, getPlotDevices, isLoading, error, refreshData } = useDevices();
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
-  // Calculate stats for each plot
-  const plotStats = plots.map((plot) => {
+  // Calculate stats for each plot with memoization
+  const plotStats = useMemo(() => plots.map((plot) => {
     const plotDevices = getPlotDevices(plot.id);
     const online = plotDevices.filter((d) => d.status === 'online').length;
     const warning = plotDevices.filter((d) => d.status === 'warning').length;
     const offline = plotDevices.filter((d) => d.status === 'offline').length;
     
-    // Calculate averages
-    const avgMoisture = plotDevices.reduce((sum, d) => sum + d.readings.moisture, 0) / plotDevices.length;
-    const avgTemp = plotDevices.reduce((sum, d) => sum + d.readings.temperature, 0) / plotDevices.length;
+    // Calculate averages safely
+    const avgMoisture = plotDevices.length > 0 
+      ? plotDevices.reduce((sum, d) => sum + d.readings.moisture, 0) / plotDevices.length 
+      : 0;
+    const avgTemp = plotDevices.length > 0 
+      ? plotDevices.reduce((sum, d) => sum + d.readings.temperature, 0) / plotDevices.length 
+      : 0;
 
     return {
       ...plot,
@@ -43,7 +49,43 @@ export default function Plots() {
       stats: { online, warning, offline, total: plotDevices.length },
       averages: { moisture: avgMoisture, temperature: avgTemp },
     };
-  });
+  }), [plots, getPlotDevices]);
+
+  // Loading state
+  if (isLoading && plots.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && plots.length === 0) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <ErrorState
+          title="Failed to Load Plots"
+          message={error}
+          onRetry={refreshData}
+          variant="connection"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 fade-in">

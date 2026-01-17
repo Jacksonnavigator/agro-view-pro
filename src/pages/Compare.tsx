@@ -1,9 +1,12 @@
-// Device comparison page
+// Device comparison page with error handling
+import { useMemo } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { DeviceComparisonChart } from '@/components/dashboard/DeviceComparisonChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusIndicator } from '@/components/ui/status-indicator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
 import {
   Table,
   TableBody,
@@ -14,13 +17,48 @@ import {
 } from '@/components/ui/table';
 
 export default function Compare() {
-  const { devices } = useDevices();
+  const { devices, isLoading, error, refreshData } = useDevices();
 
-  // Calculate averages and stats for comparison table
-  const avgMoisture = devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length;
-  const avgTemp = devices.reduce((sum, d) => sum + d.readings.temperature, 0) / devices.length;
-  const avgPh = devices.reduce((sum, d) => sum + d.readings.ph, 0) / devices.length;
-  const avgEc = devices.reduce((sum, d) => sum + d.readings.ec, 0) / devices.length;
+  // Calculate averages safely with memoization (guard against empty arrays)
+  const averages = useMemo(() => {
+    if (devices.length === 0) {
+      return { moisture: 0, temp: 0, ph: 0, ec: 0 };
+    }
+    return {
+      moisture: devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length,
+      temp: devices.reduce((sum, d) => sum + d.readings.temperature, 0) / devices.length,
+      ph: devices.reduce((sum, d) => sum + d.readings.ph, 0) / devices.length,
+      ec: devices.reduce((sum, d) => sum + d.readings.ec, 0) / devices.length,
+    };
+  }, [devices]);
+
+  // Loading state
+  if (isLoading && devices.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-80" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && devices.length === 0) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <ErrorState
+          title="Failed to Load Devices"
+          message={error}
+          onRetry={refreshData}
+          variant="connection"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 fade-in">
@@ -63,12 +101,12 @@ export default function Compare() {
                       <StatusIndicator status={device.status} showLabel size="sm" />
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      <span className={device.readings.moisture > avgMoisture ? 'text-success' : 'text-muted-foreground'}>
+                      <span className={device.readings.moisture > averages.moisture ? 'text-success' : 'text-muted-foreground'}>
                         {device.readings.moisture}%
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      <span className={device.readings.temperature > avgTemp ? 'text-warning' : 'text-muted-foreground'}>
+                      <span className={device.readings.temperature > averages.temp ? 'text-warning' : 'text-muted-foreground'}>
                         {device.readings.temperature}°C
                       </span>
                     </TableCell>
@@ -84,16 +122,16 @@ export default function Compare() {
                 <TableRow className="bg-muted/50 font-medium">
                   <TableCell colSpan={2}>Average</TableCell>
                   <TableCell className="text-right font-mono">
-                    {avgMoisture.toFixed(1)}%
+                    {averages.moisture.toFixed(1)}%
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {avgTemp.toFixed(1)}°C
+                    {averages.temp.toFixed(1)}°C
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {avgPh.toFixed(2)}
+                    {averages.ph.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {avgEc.toFixed(2)} mS/cm
+                    {averages.ec.toFixed(2)} mS/cm
                   </TableCell>
                 </TableRow>
               </TableBody>
