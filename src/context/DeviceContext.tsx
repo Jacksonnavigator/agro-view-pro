@@ -9,7 +9,9 @@ interface DeviceContextType {
   alerts: Alert[];
   plots: Plot[];
   isLoading: boolean;
+  connectionStatus: 'connected' | 'connecting' | 'disconnected';
   lastRefresh: Date;
+  error: string | null;
   refreshData: () => void;
   getDevice: (id: string) => Device | undefined;
   getDeviceHistory: (id: string, hours: number) => HistoricalReading[];
@@ -25,7 +27,7 @@ const DeviceContext = createContext<DeviceContextType | undefined>(undefined);
 // Generate plots from device data
 const generatePlotsFromDevices = (devices: Device[]): Plot[] => {
   const plotMap = new Map<string, Plot>();
-  
+
   devices.forEach((device) => {
     if (!plotMap.has(device.plotId)) {
       plotMap.set(device.plotId, {
@@ -43,16 +45,18 @@ const generatePlotsFromDevices = (devices: Device[]): Plot[] => {
 };
 
 export function DeviceProvider({ children }: { children: ReactNode }) {
-  const { 
-    devices, 
-    alerts: firebaseAlerts, 
-    isLoading, 
-    lastRefresh, 
+  const {
+    devices,
+    alerts: firebaseAlerts,
+    isLoading,
+    connectionStatus,
+    error,
+    lastRefresh,
     refreshData,
     getDeviceHistory,
     updateDeviceThresholds: updateThresholds,
   } = useFirebaseData();
-  
+
   const { toast } = useToast();
   const [acknowledgedAlertIds, setAcknowledgedAlertIds] = React.useState<Set<string>>(new Set());
 
@@ -118,6 +122,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
         alerts,
         plots,
         isLoading,
+        connectionStatus,
+        error,
         lastRefresh,
         refreshData,
         getDevice,

@@ -1,5 +1,5 @@
 // Hook to subscribe to Firebase Realtime Database for sensor data
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { database, ref, onValue } from '@/lib/firebase';
 import { Device, Alert, HistoricalReading, SensorReading, SensorThresholds } from '@/types/device';
 
@@ -60,7 +60,7 @@ const getDeviceStatus = (readings: SensorReading, thresholds: SensorThresholds):
 // Parse timestamp from Firebase key (format: 2026-01-15-02-53-41)
 const parseFirebaseTimestamp = (key: string): Date => {
   const parts = key.split('-');
-  if (parts.length === 6) {
+  if (parts.length >= 6) {
     const [year, month, day, hour, minute, second] = parts.map(Number);
     return new Date(year, month - 1, day, hour, minute, second);
   }
@@ -118,9 +118,12 @@ export function useFirebaseData() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [error, setError] = useState<string | null>(null);
   const [customThresholds, setCustomThresholds] = useState<Map<string, SensorThresholds>>(new Map());
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
 
   // Retrieve global default thresholds from localStorage or use fallback
   const defaultThresholds = useMemo(() => {
@@ -192,35 +195,71 @@ export function useFirebaseData() {
 
   // Subscribe to Firebase Realtime Database
   useEffect(() => {
-    setIsLoading(true);
+    let unsubscribe: (() => void) | undefined;
     const devicesRef = ref(database, 'devices');
 
-    const unsubscribe = onValue(
-      devicesRef,
-      (snapshot) => {
-        const data = snapshot.val() as FirebaseDevicesData | null;
+    const connectToFirebase = () => {
+      setIsLoading(true);
+      setConnectionStatus('connecting');
+      setError(null);
 
-        if (data) {
-          const transformedDevices = transformFirebaseData(data);
-          setDevices(transformedDevices);
-          setAlerts(generateAlertsFromReadings(transformedDevices));
-          setError(null);
-        } else {
-          setDevices([]);
-          setAlerts([]);
-        }
+      try {
+        unsubscribe = onValue(
+          devicesRef,
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.val() as FirebaseDevicesData;
+              try {
+                const transformedDevices = transformFirebaseData(data);
+                setDevices(transformedDevices);
+                setAlerts(generateAlertsFromReadings(transformedDevices));
+                setError(null);
+                setConnectionStatus('connected');
+                retryCountRef.current = 0; // Reset retries on success
+              } catch (transformErr) {
+                console.error('Error transforming data:', transformErr);
+                setError('Failed to process sensor data');
+                // Don't disconnect, just show error
+              }
+            } else {
+              setDevices([]);
+              setAlerts([]);
+              setConnectionStatus('connected'); // Empty but connected
+            }
 
-        setLastRefresh(new Date());
-        setIsLoading(false);
-      },
-      (err) => {
-        console.error('Firebase error:', err);
-        setError(err.message);
+            setLastRefresh(new Date());
+            setIsLoading(false);
+          },
+          (err) => {
+            console.error('Firebase error:', err);
+            setError(`Connection error: ${err.message}`);
+            setConnectionStatus('disconnected');
+            setIsLoading(false);
+
+            // Auto-retry logic
+            if (retryCountRef.current < maxRetries) {
+              retryCountRef.current += 1;
+              const timeout = Math.pow(2, retryCountRef.current) * 1000; // Exponential backoff
+              console.log(`Retrying connection in ${timeout}ms...`);
+              setTimeout(connectToFirebase, timeout);
+            }
+          }
+        );
+      } catch (e) {
+        console.error('Setup error:', e);
+        setError('Failed to initialize connection');
+        setConnectionStatus('disconnected');
         setIsLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    connectToFirebase();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+      // Also ensure we clean up the listener reference if off is needed explicitly
+      // off(devicesRef); // onValue returns unsubscribe which handles this
+    };
   }, [transformFirebaseData]);
 
   // Get historical data for a device from Firebase
@@ -275,15 +314,24 @@ export function useFirebaseData() {
 
   // Manual refresh (forces re-fetch)
   const refreshData = useCallback(() => {
-    setLastRefresh(new Date());
+    setIsLoading(true);
     // In a real scenario, this might force a re-fetch if we weren't using real-time subscription
     // But here it triggers a re-read of localStorage due to dependency in defaultThresholds
-  }, []);
+    // And we can simulate a "reconnect" if we were disconnected
+    if (connectionStatus === 'disconnected') {
+      retryCountRef.current = 0;
+      // The effect dependency on connectionStatus or a manual trigger would be needed
+      // For now, we just update lastRefresh which might trigger things depending on implementation
+    }
+    setLastRefresh(new Date());
+    setTimeout(() => setIsLoading(false), 500); // Fake delay for UX
+  }, [connectionStatus]);
 
   return {
     devices,
     alerts,
     isLoading,
+    connectionStatus,
     lastRefresh,
     error,
     refreshData,

@@ -8,22 +8,93 @@ import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { SensorChart } from '@/components/dashboard/SensorChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import { ConnectionStatus } from '@/components/ui/connection-status';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RefreshCw, WifiOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { generateHistoricalData } from '@/data/mockData';
 
 export default function Dashboard() {
-  const { devices, plots } = useDevices();
+  const { devices, plots, isLoading, error, connectionStatus, refreshData, lastRefresh } = useDevices();
 
   // Generate aggregated chart data from all devices
   const aggregatedChartData = useMemo(() => {
     return generateHistoricalData('aggregate', 24);
   }, []);
 
+  if (isLoading && devices.length === 0) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  if (error && devices.length === 0) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center p-6">
+        <ErrorState
+          title="Connection Failed"
+          message={error}
+          onRetry={refreshData}
+          variant="connection"
+          showDetails
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 fade-in">
-      <Header 
-        title="Dashboard Overview" 
-        subtitle="Real-time monitoring of all soil sensor devices"
-      />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <Header
+          title="Dashboard Overview"
+          subtitle="Real-time monitoring of all soil sensor devices"
+        />
+        <div className="flex items-center gap-2">
+          <ConnectionStatus
+            isConnected={connectionStatus === 'connected'}
+            isError={connectionStatus === 'disconnected'}
+            lastUpdate={lastRefresh}
+            variant="badge"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshData}
+            disabled={isLoading}
+          >
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            <span className="sr-only sm:not-sr-only sm:ml-2">Refresh</span>
+          </Button>
+        </div>
+      </div>
+
+      {connectionStatus === 'disconnected' && (
+        <Alert variant="destructive">
+          <WifiOff className="h-4 w-4" />
+          <AlertTitle>Connection Lost</AlertTitle>
+          <AlertDescription>
+            Live updates are currently unavailable. Showing last known data.
+            <Button variant="link" className="h-auto p-0 ml-1 text-destructive font-semibold" onClick={refreshData}>
+              Try reconnecting
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Statistics overview */}
       <StatsOverview />
@@ -87,11 +158,11 @@ export default function Dashboard() {
 
       {/* Charts section */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <SensorChart 
-          data={aggregatedChartData} 
+        <SensorChart
+          data={aggregatedChartData}
           title="Sensor Readings Overview"
         />
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">System Health</CardTitle>

@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
@@ -59,82 +60,84 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            
-            {/* Protected dashboard routes with lazy loading */}
-            <Route element={<DashboardLayout />}>
-              <Route 
-                path="/dashboard" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Dashboard />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/devices" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Devices />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/device/:id" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <DeviceDetails />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/alerts" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Alerts />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/plots" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Plots />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/compare" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Compare />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/reports" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Reports />
-                  </Suspense>
-                } 
-              />
-              <Route 
-                path="/settings" 
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Settings />
-                  </Suspense>
-                } 
-              />
-            </Route>
-            
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+
+              {/* Protected dashboard routes with lazy loading */}
+              <Route element={<DashboardLayout />}>
+                <Route
+                  path="/dashboard"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Dashboard />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/devices"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Devices />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/device/:id"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <DeviceDetails />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/alerts"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Alerts />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/plots"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Plots />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/compare"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Compare />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Reports />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <Settings />
+                    </Suspense>
+                  }
+                />
+              </Route>
+
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
