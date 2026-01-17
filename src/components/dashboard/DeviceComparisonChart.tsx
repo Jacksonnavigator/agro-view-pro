@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { generateHistoricalData } from '@/data/mockData';
+import { useDevices } from '@/context/DeviceContext';
 
 interface DeviceComparisonChartProps {
   devices: Device[];
@@ -58,6 +58,7 @@ const deviceColors = [
 ];
 
 export function DeviceComparisonChart({ devices, className }: DeviceComparisonChartProps) {
+  const { getDeviceHistory } = useDevices();
   const [selectedDevices, setSelectedDevices] = useState<string[]>(
     devices.slice(0, 3).map((d) => d.id)
   );
@@ -66,14 +67,14 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
 
   const currentRange = timeRanges.find((r) => r.value === selectedRange) || timeRanges[1];
 
-  // Generate comparison data
+  // Generate comparison data using real Firebase hook
   const chartData = useMemo(() => {
     if (selectedDevices.length === 0) return [];
 
-    // Get historical data for each selected device
+    // Get historical data for each selected device from Firebase
     const deviceHistories: Record<string, HistoricalReading[]> = {};
     selectedDevices.forEach((deviceId) => {
-      deviceHistories[deviceId] = generateHistoricalData(deviceId, currentRange.hours);
+      deviceHistories[deviceId] = getDeviceHistory(deviceId, currentRange.hours);
     });
 
     // Merge data by timestamp
@@ -95,7 +96,7 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
 
       return dataPoint;
     });
-  }, [selectedDevices, selectedParameter, currentRange.hours]);
+  }, [selectedDevices, selectedParameter, currentRange.hours, getDeviceHistory]);
 
   const toggleDevice = (deviceId: string) => {
     setSelectedDevices((prev) =>
