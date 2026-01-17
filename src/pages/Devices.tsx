@@ -1,4 +1,4 @@
-// Devices listing page with filters
+// Devices listing page with filters, debounced search, and error handling
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useDevices } from '@/context/DeviceContext';
@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
 import { 
   Search, 
   Filter, 
@@ -33,26 +35,61 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { DeviceStatus } from '@/types/device';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function Devices() {
-  const { devices, plots } = useDevices();
+  const { devices, plots, isLoading, error, refreshData } = useDevices();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
   const [plotFilter, setPlotFilter] = useState<string>('all');
 
-  // Filter devices based on search and filters
+  // Debounce search input to prevent UI freezing with large datasets
+  const debouncedSearch = useDebounce(search, 300);
+
+  // Filter devices based on debounced search and filters
   const filteredDevices = useMemo(() => {
+    const searchLower = debouncedSearch.toLowerCase().trim();
+    
     return devices.filter((device) => {
-      const matchesSearch = 
-        device.name.toLowerCase().includes(search.toLowerCase()) ||
-        device.plotName.toLowerCase().includes(search.toLowerCase());
+      // Skip search matching if empty
+      const matchesSearch = !searchLower || 
+        device.name.toLowerCase().includes(searchLower) ||
+        device.plotName.toLowerCase().includes(searchLower);
       
       const matchesStatus = statusFilter === 'all' || device.status === statusFilter;
       const matchesPlot = plotFilter === 'all' || device.plotId === plotFilter;
 
       return matchesSearch && matchesStatus && matchesPlot;
     });
-  }, [devices, search, statusFilter, plotFilter]);
+  }, [devices, debouncedSearch, statusFilter, plotFilter]);
+
+  // Loading state
+  if (isLoading && devices.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-16" />
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && devices.length === 0) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <ErrorState
+          title="Failed to Load Devices"
+          message={error}
+          onRetry={refreshData}
+          variant="connection"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 fade-in">

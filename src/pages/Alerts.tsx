@@ -1,6 +1,8 @@
-// Alerts management page
+// Alerts management page with error handling
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -51,7 +53,7 @@ const severityConfig = {
 };
 
 export default function Alerts() {
-  const { alerts, acknowledgeAlert, devices } = useDevices();
+  const { alerts, acknowledgeAlert, devices, isLoading, error, refreshData } = useDevices();
   const [severityFilter, setSeverityFilter] = useState<AlertSeverity | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'acknowledged'>('all');
 
@@ -69,15 +71,47 @@ export default function Alerts() {
   }, [alerts, severityFilter, statusFilter]);
 
   // Stats
-  const stats = {
+  const stats = useMemo(() => ({
     total: alerts.length,
     active: alerts.filter((a) => !a.acknowledged).length,
     critical: alerts.filter((a) => a.severity === 'critical' && !a.acknowledged).length,
-  };
+  }), [alerts]);
 
   const acknowledgeAll = () => {
     filteredAlerts.filter((a) => !a.acknowledged).forEach((a) => acknowledgeAlert(a.id));
   };
+
+  // Loading state
+  if (isLoading && alerts.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && alerts.length === 0) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <ErrorState
+          title="Failed to Load Alerts"
+          message={error}
+          onRetry={refreshData}
+          variant="connection"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 fade-in">
