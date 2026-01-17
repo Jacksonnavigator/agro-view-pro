@@ -1,7 +1,6 @@
 // Export utilities for CSV and data download
 import { Device, Alert, HistoricalReading } from '@/types/device';
 import { format } from 'date-fns';
-import { generateHistoricalData } from '@/data/mockData';
 
 // Convert data to CSV string
 export function convertToCSV(data: Record<string, unknown>[], headers?: string[]): string {
@@ -97,17 +96,18 @@ export function exportAlertsCSV(alerts: Alert[]): void {
   downloadFile(csv, `soil_alerts_${timestamp}.csv`);
 }
 
-// Export historical data for devices
+// Export historical data for devices (requires getDeviceHistory function from context)
 export function exportHistoricalDataCSV(
   devices: Device[],
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  getDeviceHistory: (deviceId: string, hours: number) => HistoricalReading[]
 ): void {
   const hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
   const allData: Record<string, unknown>[] = [];
 
   devices.forEach((device) => {
-    const history = generateHistoricalData(device.id, hours);
+    const history = getDeviceHistory(device.id, hours);
     
     history.forEach((reading) => {
       if (reading.timestamp >= startDate && reading.timestamp <= endDate) {
@@ -135,21 +135,30 @@ export function exportHistoricalDataCSV(
   downloadFile(csv, `soil_historical_data_${timestamp}.csv`);
 }
 
-// Quick export helpers
-export function exportDailySummary(devices: Device[]): void {
+// Quick export helpers (now require getDeviceHistory parameter)
+export function exportDailySummary(
+  devices: Device[],
+  getDeviceHistory: (deviceId: string, hours: number) => HistoricalReading[]
+): void {
   const now = new Date();
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  exportHistoricalDataCSV(devices, yesterday, now);
+  exportHistoricalDataCSV(devices, yesterday, now, getDeviceHistory);
 }
 
-export function exportWeeklyReport(devices: Device[]): void {
+export function exportWeeklyReport(
+  devices: Device[],
+  getDeviceHistory: (deviceId: string, hours: number) => HistoricalReading[]
+): void {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  exportHistoricalDataCSV(devices, weekAgo, now);
+  exportHistoricalDataCSV(devices, weekAgo, now, getDeviceHistory);
 }
 
-export function exportMonthlyReport(devices: Device[]): void {
+export function exportMonthlyReport(
+  devices: Device[],
+  getDeviceHistory: (deviceId: string, hours: number) => HistoricalReading[]
+): void {
   const now = new Date();
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  exportHistoricalDataCSV(devices, monthAgo, now);
+  exportHistoricalDataCSV(devices, monthAgo, now, getDeviceHistory);
 }

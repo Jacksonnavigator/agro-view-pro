@@ -15,15 +15,15 @@ import { ConnectionStatus } from '@/components/ui/connection-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { generateHistoricalData } from '@/data/mockData';
 
 export default function Dashboard() {
-  const { devices, plots, isLoading, error, connectionStatus, refreshData, lastRefresh } = useDevices();
+  const { devices, plots, isLoading, error, connectionStatus, refreshData, lastRefresh, getDeviceHistory } = useDevices();
 
-  // Generate aggregated chart data from all devices
+  // Generate aggregated chart data from first device's history (real data from Firebase hook)
   const aggregatedChartData = useMemo(() => {
-    return generateHistoricalData('aggregate', 24);
-  }, []);
+    if (devices.length === 0) return [];
+    return getDeviceHistory(devices[0].id, 24);
+  }, [devices, getDeviceHistory]);
 
   if (isLoading && devices.length === 0) {
     return (

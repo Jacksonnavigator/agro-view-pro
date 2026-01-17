@@ -37,7 +37,7 @@ import {
 } from '@/utils/exportUtils';
 
 export default function Reports() {
-  const { devices, plots, alerts } = useDevices();
+  const { devices, plots, alerts, getDeviceHistory } = useDevices();
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -61,13 +61,13 @@ export default function Reports() {
     try {
       switch (type) {
         case 'daily':
-          exportDailySummary(devices);
+          exportDailySummary(devices, getDeviceHistory);
           break;
         case 'weekly':
-          exportWeeklyReport(devices);
+          exportWeeklyReport(devices, getDeviceHistory);
           break;
         case 'monthly':
-          exportMonthlyReport(devices);
+          exportMonthlyReport(devices, getDeviceHistory);
           break;
         case 'alerts':
           exportAlertsCSV(alerts);
@@ -116,10 +116,10 @@ export default function Reports() {
       const selectedDeviceData = devices.filter((d) => selectedDevices.includes(d.id));
 
       if (exportFormat === 'csv') {
-        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to);
+        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to, getDeviceHistory);
       } else {
         // For xlsx and pdf, we'll use CSV as fallback with a message
-        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to);
+        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to, getDeviceHistory);
         toast({
           title: 'Note',
           description: `${exportFormat.toUpperCase()} format is exported as CSV. Full ${exportFormat.toUpperCase()} support coming soon!`,
