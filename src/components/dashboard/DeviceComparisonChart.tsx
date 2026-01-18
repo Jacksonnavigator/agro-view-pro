@@ -183,14 +183,24 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
-                  dataKey="time"
+dataKey="time"
                   type="number"
-                  scale="time"
+                  domain={['dataMin', 'dataMax']}
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => format(new Date(value), 'HH:mm')}
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    if (currentRange.hours <= 24) {
+                      return format(date, 'HH:mm');
+                    } else if (currentRange.hours <= 168) {
+                      return format(date, 'EEE HH:mm');
+                    } else {
+                      return format(date, 'MMM d');
+                    }
+                  }}
+                  tickCount={6}
                 />
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"

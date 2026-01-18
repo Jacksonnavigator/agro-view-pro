@@ -169,12 +169,23 @@ export function SensorChart({
             <XAxis
               dataKey="time"
               type="number"
-              scale="time"
+              domain={['dataMin', 'dataMax']}
               stroke="hsl(var(--muted-foreground))"
               fontSize={11}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => format(new Date(value), 'HH:mm')}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                const range = timeRanges.find(r => r.value === selectedRange);
+                if (!range || range.hours <= 24) {
+                  return format(date, 'HH:mm');
+                } else if (range.hours <= 168) {
+                  return format(date, 'EEE HH:mm');
+                } else {
+                  return format(date, 'MMM d');
+                }
+              }}
+              tickCount={6}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
