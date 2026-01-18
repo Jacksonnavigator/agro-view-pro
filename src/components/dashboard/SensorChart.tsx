@@ -71,12 +71,15 @@ export function SensorChart({
 
   // Transform data for Recharts
   const chartData = useMemo(() => {
-    return data.map((reading) => ({
-      time: reading.timestamp.getTime(),
-      formattedTime: format(reading.timestamp, 'HH:mm'),
-      ...reading.readings,
-    }));
-  }, [data]);
+    const mapped = data
+      .map((reading) => ({
+        time: reading.timestamp.getTime(),
+        ...reading.readings,
+      }))
+      .sort((a, b) => a.time - b.time);
+    console.log('[SensorChart] chartData length', mapped.length, 'selectedRange', selectedRange);
+    return mapped;
+  }, [data, selectedRange]);
 
   const toggleParameter = (param: string) => {
     setVisibleParams((prev) => {
@@ -91,6 +94,8 @@ export function SensorChart({
   };
 
   const handleRangeChange = (range: TimeRange) => {
+    alert(`Clicked range: ${range.label} (${range.value})`);
+    console.log('[SensorChart] handleRangeChange', range);
     setSelectedRange(range.value);
     onTimeRangeChange?.(range);
   };
@@ -163,11 +168,14 @@ export function SensorChart({
               vertical={false}
             />
             <XAxis
-              dataKey="formattedTime"
+              dataKey="time"
+              type="number"
+              scale="time"
               stroke="hsl(var(--muted-foreground))"
               fontSize={11}
               tickLine={false}
               axisLine={false}
+              tickFormatter={(value) => format(new Date(value), 'HH:mm')}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
@@ -189,7 +197,7 @@ export function SensorChart({
                 if (payload?.[0]?.payload?.time) {
                   return format(new Date(payload[0].payload.time), 'MMM d, HH:mm');
                 }
-                return value;
+                return String(value);
               }}
             />
             <Legend

@@ -81,21 +81,22 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
     const firstDevice = selectedDevices[0];
     if (!deviceHistories[firstDevice]) return [];
 
-    return deviceHistories[firstDevice].map((reading, index) => {
-      const dataPoint: Record<string, number | string> = {
-        time: reading.timestamp.getTime(),
-        formattedTime: format(reading.timestamp, 'HH:mm'),
-      };
+    return deviceHistories[firstDevice]
+      .map((reading, index) => {
+        const dataPoint: Record<string, number | string> = {
+          time: reading.timestamp.getTime(),
+        };
 
-      selectedDevices.forEach((deviceId) => {
-        const deviceReading = deviceHistories[deviceId]?.[index];
-        if (deviceReading) {
-          dataPoint[deviceId] = deviceReading.readings[selectedParameter as keyof typeof deviceReading.readings] as number;
-        }
-      });
+        selectedDevices.forEach((deviceId) => {
+          const deviceReading = deviceHistories[deviceId]?.[index];
+          if (deviceReading) {
+            dataPoint[deviceId] = deviceReading.readings[selectedParameter as keyof typeof deviceReading.readings] as number;
+          }
+        });
 
-      return dataPoint;
-    });
+        return dataPoint;
+      })
+      .sort((a, b) => (a.time as number) - (b.time as number));
   }, [selectedDevices, selectedParameter, currentRange.hours, getDeviceHistory]);
 
   const toggleDevice = (deviceId: string) => {
@@ -180,17 +181,16 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
                 data={chartData}
                 margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--border))"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
-                  dataKey="formattedTime"
+                  dataKey="time"
+                  type="number"
+                  scale="time"
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
+                  tickFormatter={(value) => format(new Date(value), 'HH:mm')}
                 />
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"
