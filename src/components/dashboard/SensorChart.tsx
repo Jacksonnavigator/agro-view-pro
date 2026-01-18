@@ -94,7 +94,6 @@ export function SensorChart({
   };
 
   const handleRangeChange = (range: TimeRange) => {
-    alert(`Clicked range: ${range.label} (${range.value})`);
     console.log('[SensorChart] handleRangeChange', range);
     setSelectedRange(range.value);
     onTimeRangeChange?.(range);

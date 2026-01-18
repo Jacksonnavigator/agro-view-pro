@@ -1,5 +1,5 @@
 // Main dashboard overview page
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
@@ -15,15 +15,22 @@ import { ConnectionStatus } from '@/components/ui/connection-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TimeRange } from '@/types/device';
 
 export default function Dashboard() {
   const { devices, plots, isLoading, error, connectionStatus, refreshData, lastRefresh, getDeviceHistory } = useDevices();
+  const [selectedHours, setSelectedHours] = useState(24);
+
+  // Handle time range change from chart
+  const handleTimeRangeChange = useCallback((range: TimeRange) => {
+    setSelectedHours(range.hours);
+  }, []);
 
   // Generate aggregated chart data from first device's history (real data from Firebase hook)
   const aggregatedChartData = useMemo(() => {
     if (devices.length === 0) return [];
-    return getDeviceHistory(devices[0].id, 24);
-  }, [devices, getDeviceHistory]);
+    return getDeviceHistory(devices[0].id, selectedHours);
+  }, [devices, getDeviceHistory, selectedHours]);
 
   if (isLoading && devices.length === 0) {
     return (
@@ -161,6 +168,7 @@ export default function Dashboard() {
         <SensorChart
           data={aggregatedChartData}
           title="Sensor Readings Overview"
+          onTimeRangeChange={handleTimeRangeChange}
         />
 
         <Card>
