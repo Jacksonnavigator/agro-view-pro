@@ -9,7 +9,7 @@ import {
   generateAlertsFromReadings,
   transformFirebaseData,
 } from '@/lib/firebase-data';
-import { generateDeviceHistory, updateDeviceHistory } from '@/lib/device-history';
+import { getOrCreateExtendedHistory, updateDeviceHistory } from '@/lib/device-history';
 
 export function useFirebaseData() {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -46,7 +46,8 @@ export function useFirebaseData() {
         const nextMap = new Map(prev);
         devices.forEach((device) => {
           if (!nextMap.has(device.id)) {
-            nextMap.set(device.id, generateDeviceHistory({ seed: device.readings, hours: 24 }));
+            // Generate 30 days of extended history
+            nextMap.set(device.id, getOrCreateExtendedHistory(device.id, device.readings));
           }
         });
         return nextMap;
@@ -83,11 +84,9 @@ export function useFirebaseData() {
                 setDeviceHistoryMap((prev) => {
                   const nextMap = new Map(prev);
                   transformedDevices.forEach((device) => {
-                    const previousHistory = nextMap.get(device.id);
                     const updatedHistory = updateDeviceHistory({
-                      previous: previousHistory,
+                      deviceId: device.id,
                       nextReadings: device.readings,
-                      hours: 24,
                       timestamp: device.lastUpdated,
                     });
                     nextMap.set(device.id, updatedHistory);
@@ -146,27 +145,25 @@ export function useFirebaseData() {
 
   // Get historical data for a device from Firebase
   const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
-    // For now, we'll generate synthetic historical data based on current readings
-    // In a real implementation, you'd query Firebase for historical timestamps
+    const now = Date.now();
+    const cutoff = now - hours * 60 * 60 * 1000;
+    
+    // Check if we have cached data
     const cached = deviceHistoryMap.get(deviceId);
     if (cached && cached.length > 0) {
-      // Slice to the requested window (hours) based on timestamps
-      const now = Date.now();
-      const cutoff = now - hours * 60 * 60 * 1000;
       const filtered = cached.filter(r => r.timestamp.getTime() >= cutoff);
       const sorted = filtered.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} cached=${cached.length} filtered=${sorted.length} now=${new Date(now).toISOString()} cutoff=${new Date(cutoff).toISOString()}`);
-      console.log(`[getDeviceHistory] first=${sorted[0]?.timestamp.toISOString()} last=${sorted[sorted.length-1]?.timestamp.toISOString()}`);
+      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} cached=${cached.length} filtered=${sorted.length}`);
       return sorted;
     }
+    
+    // Fallback: generate extended history
     const device = devices.find(d => d.id === deviceId);
     if (!device) return [];
-    const generated = generateDeviceHistory({
-      seed: device.readings,
-      hours,
-    });
-    console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} generated=${generated.length}`);
-    return generated;
+    const generated = getOrCreateExtendedHistory(deviceId, device.readings);
+    const filteredGenerated = generated.filter(r => r.timestamp.getTime() >= cutoff);
+    console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} generated=${filteredGenerated.length}`);
+    return filteredGenerated;
   }, [deviceHistoryMap, devices]);
 
   // Update device thresholds
