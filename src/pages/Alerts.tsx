@@ -1,5 +1,5 @@
 // Alerts management page with error handling
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
@@ -52,7 +52,7 @@ const severityConfig = {
   },
 };
 
-export default function Alerts() {
+const Alerts = forwardRef<HTMLDivElement, object>(function Alerts(_props, ref) {
   const { alerts, acknowledgeAlert, devices, isLoading, error, refreshData } = useDevices();
   const [severityFilter, setSeverityFilter] = useState<AlertSeverity | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'acknowledged'>('all');
@@ -313,4 +313,8 @@ export default function Alerts() {
       </div>
     </div>
   );
-}
+});
+
+Alerts.displayName = 'Alerts';
+
+export default Alerts;

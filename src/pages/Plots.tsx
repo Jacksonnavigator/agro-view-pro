@@ -1,5 +1,5 @@
 // Plots/Location view page with interactive map and error handling
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function Plots() {
+const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
   const { plots, devices, getPlotDevices, isLoading, error, refreshData } = useDevices();
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
@@ -153,7 +153,9 @@ export default function Plots() {
               </div>
               <div>
                 <p className="font-mono text-2xl font-bold">
-                  {(devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length).toFixed(1)}%
+                  {devices.length > 0 
+                    ? (devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length).toFixed(1) 
+                    : '0.0'}%
                 </p>
                 <p className="text-sm text-muted-foreground">Avg Moisture</p>
               </div>
@@ -285,4 +287,8 @@ export default function Plots() {
       )}
     </div>
   );
-}
+});
+
+Plots.displayName = 'Plots';
+
+export default Plots;
