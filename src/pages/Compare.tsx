@@ -1,5 +1,5 @@
 // Device comparison page with error handling
-import { useMemo } from 'react';
+import { useMemo, forwardRef } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { DeviceComparisonChart } from '@/components/dashboard/DeviceComparisonChart';
@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-export default function Compare() {
+const Compare = forwardRef<HTMLDivElement, object>(function Compare(_props, ref) {
   const { devices, isLoading, error, refreshData } = useDevices();
 
   // Calculate averages safely with memoization (guard against empty arrays)
@@ -141,4 +141,8 @@ export default function Compare() {
       </Card>
     </div>
   );
-}
+});
+
+Compare.displayName = 'Compare';
+
+export default Compare;

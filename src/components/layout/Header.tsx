@@ -1,4 +1,5 @@
 // Dashboard header component with refresh controls
+import { forwardRef } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Clock, Activity } from 'lucide-react';
@@ -11,7 +12,7 @@ interface HeaderProps {
   children?: React.ReactNode;
 }
 
-export function Header({ title, subtitle, children }: HeaderProps) {
+export const Header = forwardRef<HTMLElement, HeaderProps>(function Header({ title, subtitle, children }, ref) {
   const { isLoading, lastRefresh, refreshData } = useDevices();
 
   return (
@@ -65,4 +66,6 @@ export function Header({ title, subtitle, children }: HeaderProps) {
       </div>
     </header>
   );
-}
+});
+
+Header.displayName = 'Header';

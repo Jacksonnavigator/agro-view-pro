@@ -1,5 +1,5 @@
 // Devices listing page with filters, debounced search, pagination, and error handling
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
@@ -48,7 +48,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 const ITEMS_PER_PAGE = 10;
 
-export default function Devices() {
+const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref) {
   const { devices, plots, isLoading, error, refreshData } = useDevices();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | 'all'>('all');
@@ -311,10 +311,13 @@ export default function Devices() {
         )}
       </Card>
 
-      {/* Result count */}
       <div className="text-sm text-muted-foreground text-center">
         Showing {paginatedDevices.length} of {filteredDevices.length} devices
       </div>
     </div>
   );
-}
+});
+
+Devices.displayName = 'Devices';
+
+export default Devices;

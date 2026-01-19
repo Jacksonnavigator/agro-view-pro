@@ -1,5 +1,5 @@
 // Settings page (admin only)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -73,7 +73,7 @@ const defaultSettings: SettingsState = {
   },
 };
 
-export default function Settings() {
+const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, ref) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
@@ -538,4 +538,8 @@ export default function Settings() {
       </div>
     </div>
   );
-}
+});
+
+Settings.displayName = 'Settings';
+
+export default Settings;

@@ -1,5 +1,5 @@
 // Reports and data export page with real CSV export functionality
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ import {
   exportMonthlyReport,
 } from '@/utils/exportUtils';
 
-export default function Reports() {
+const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref) {
   const { devices, plots, alerts, getDeviceHistory } = useDevices();
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
@@ -431,4 +431,8 @@ export default function Reports() {
       </Card>
     </div>
   );
-}
+});
+
+Reports.displayName = 'Reports';
+
+export default Reports;

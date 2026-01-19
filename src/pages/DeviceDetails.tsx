@@ -1,5 +1,5 @@
 // Individual device details page
-import { useMemo, useState } from 'react';
+import { useMemo, useState, forwardRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
@@ -28,7 +28,7 @@ import { TimeRange, SensorThresholds } from '@/types/device';
 import { useAuth } from '@/context/AuthContext';
 import { exportDevicesCSV } from '@/utils/exportUtils';
 
-export default function DeviceDetails() {
+const DeviceDetails = forwardRef<HTMLDivElement, object>(function DeviceDetails(_props, ref) {
   const { id } = useParams<{ id: string }>();
   const { getDevice, getDeviceHistory, updateDeviceThresholds } = useDevices();
   const { hasRole } = useAuth();
@@ -281,4 +281,8 @@ export default function DeviceDetails() {
       )}
     </div>
   );
-}
+});
+
+DeviceDetails.displayName = 'DeviceDetails';
+
+export default DeviceDetails;

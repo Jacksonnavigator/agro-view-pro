@@ -1,5 +1,5 @@
 // Main dashboard overview page
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, forwardRef } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
@@ -13,11 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
 import { ConnectionStatus } from '@/components/ui/connection-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { RefreshCw, WifiOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { WifiOff } from 'lucide-react';
 import { TimeRange } from '@/types/device';
 
-export default function Dashboard() {
+const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, ref) {
   const { devices, plots, isLoading, error, connectionStatus, refreshData, lastRefresh, getDeviceHistory } = useDevices();
   const [selectedHours, setSelectedHours] = useState(24);
 
@@ -70,24 +69,14 @@ export default function Dashboard() {
         <Header
           title="Dashboard Overview"
           subtitle="Real-time monitoring of all soil sensor devices"
-        />
-        <div className="flex items-center gap-2">
+        >
           <ConnectionStatus
             isConnected={connectionStatus === 'connected'}
             isError={connectionStatus === 'disconnected'}
             lastUpdate={lastRefresh}
             variant="badge"
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshData}
-            disabled={isLoading}
-          >
-            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-            <span className="sr-only sm:not-sr-only sm:ml-2">Refresh</span>
-          </Button>
-        </div>
+        </Header>
       </div>
 
       {connectionStatus === 'disconnected' && (
@@ -226,4 +215,8 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
+});
+
+Dashboard.displayName = 'Dashboard';
+
+export default Dashboard;
