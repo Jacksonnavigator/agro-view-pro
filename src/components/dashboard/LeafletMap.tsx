@@ -82,6 +82,9 @@ export default function LeafletMap({ devices, height }: LeafletMapProps) {
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        maxZoom={19}
+        tileSize={256}
+        detectRetina={true}
       />
       <MapBounds devices={devicesWithLocation} />
       
