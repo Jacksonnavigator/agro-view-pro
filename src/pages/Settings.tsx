@@ -18,9 +18,11 @@ import {
   Wifi,
   Clock,
   Save,
+  MapPin,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SensorThresholds } from '@/types/device';
+import { PlotLocationManager } from '@/components/admin/PlotLocationManager';
 
 interface SettingsState {
   notifications: {
@@ -159,6 +161,7 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="thresholds">Thresholds</TabsTrigger>
+          <TabsTrigger value="plots">Plot Locations</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
@@ -374,6 +377,30 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Plot Locations tab */}
+        <TabsContent value="plots" className="space-y-4">
+          {user?.role === 'admin' ? (
+            <PlotLocationManager />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Access Restricted
+                </CardTitle>
+                <CardDescription>
+                  Only administrators can manage plot locations
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Please contact your system administrator to manage plot locations.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* System tab */}

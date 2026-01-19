@@ -41,6 +41,35 @@ const generatePlotsFromDevices = (devices: Device[]): Plot[] => {
     plotMap.get(device.plotId)!.deviceIds.push(device.id);
   });
 
+  // Load saved plot locations and merge with generated plots
+  const savedLocations = localStorage.getItem('plot_locations');
+  if (savedLocations) {
+    try {
+      const locations = JSON.parse(savedLocations);
+      plotMap.forEach((plot, plotId) => {
+        if (locations[plotId]) {
+          plot.location = locations[plotId];
+        }
+      });
+    } catch (e) {
+      console.error('Failed to load plot locations:', e);
+    }
+  } else {
+    // Add some default locations for testing
+    const defaultLocations = {
+      'north-field': { lat: 37.7749, lng: -122.4194 },
+      'south-field': { lat: 37.7849, lng: -122.4094 },
+      'east-field': { lat: 37.7649, lng: -122.4294 },
+      'west-field': { lat: 37.7949, lng: -122.4394 },
+    };
+    
+    plotMap.forEach((plot, plotId) => {
+      if (defaultLocations[plotId as keyof typeof defaultLocations]) {
+        plot.location = defaultLocations[plotId as keyof typeof defaultLocations];
+      }
+    });
+  }
+
   return Array.from(plotMap.values());
 };
 

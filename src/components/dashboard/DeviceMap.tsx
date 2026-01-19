@@ -11,6 +11,11 @@ interface DeviceMapProps {
   devices: Device[];
   className?: string;
   height?: string;
+  plots?: Array<{
+    id: string;
+    name: string;
+    location?: { lat: number; lng: number };
+  }>;
 }
 
 function MapLoader({ height }: { height: string }) {
@@ -24,16 +29,17 @@ function MapLoader({ height }: { height: string }) {
   );
 }
 
-export function DeviceMap({ devices, className, height = '400px' }: DeviceMapProps) {
+export function DeviceMap({ devices, className, height = '400px', plots }: DeviceMapProps) {
   const devicesWithLocation = devices.filter((d) => d.location);
+  const plotsWithLocation = plots?.filter((p) => p.location) || [];
 
-  if (devicesWithLocation.length === 0) {
+  if (devicesWithLocation.length === 0 && plotsWithLocation.length === 0) {
     return (
       <div 
         className={cn('flex items-center justify-center rounded-lg border bg-muted', className)}
         style={{ height }}
       >
-        <p className="text-muted-foreground">No devices with location data</p>
+        <p className="text-muted-foreground">No devices or plots with location data</p>
       </div>
     );
   }
@@ -41,7 +47,7 @@ export function DeviceMap({ devices, className, height = '400px' }: DeviceMapPro
   return (
     <div className={cn('rounded-lg overflow-hidden border', className)} style={{ height }}>
       <Suspense fallback={<MapLoader height={height} />}>
-        <LeafletMap devices={devices} height={height} />
+        <LeafletMap devices={devices} height={height} plots={plots} />
       </Suspense>
     </div>
   );

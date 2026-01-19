@@ -168,11 +168,11 @@ export default function Plots() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Map className="h-4 w-4" />
-              Device Locations
+              Plot & Device Locations
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <DeviceMap devices={devices} height="500px" />
+            <DeviceMap devices={devices} height="500px" plots={plotStats} />
           </CardContent>
         </Card>
       )}

@@ -12,10 +12,48 @@
 .leaflet-container {
   background: hsl(var(--muted)) !important;
   font-family: inherit;
+  height: 100%;
+  width: 100%;
+  z-index: 1;
 }
 
 .leaflet-tile-pane {
   filter: none;
+}
+
+/* Fix for missing marker icons */
+.leaflet-default-icon-path {
+  background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png');
+}
+
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-tile-container {
+  z-index: 2;
+}
+
+.leaflet-overlay-pane {
+  z-index: 4;
+}
+
+.leaflet-shadow-pane {
+  z-index: 3;
+}
+
+.leaflet-marker-pane {
+  z-index: 5;
+}
+
+.leaflet-popup-pane {
+  z-index: 6;
 }
 
 .leaflet-control-zoom a {
