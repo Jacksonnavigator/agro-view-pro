@@ -1,6 +1,5 @@
 // Hook to subscribe to Firebase Realtime Database for sensor data
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import React from 'react';
 import { database, ref, onValue } from '@/lib/firebase';
 import { Device, Alert, HistoricalReading, SensorThresholds } from '@/types/device';
 import {
@@ -8,8 +7,8 @@ import {
   fallbackThresholds,
   generateAlertsFromReadings,
   transformFirebaseData,
+  extractAllDeviceHistories,
 } from '@/lib/firebase-data';
-import { getOrCreateExtendedHistory, updateDeviceHistory } from '@/lib/device-history';
 
 export function useFirebaseData() {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -37,23 +36,7 @@ export function useFirebaseData() {
       }
     }
     return fallbackThresholds;
-  }, [lastRefresh]); // Re-read when refresh happens (hacky way to update if settings changed)
-
-  // Initialize history for devices that don't have it yet
-  React.useEffect(() => {
-    if (devices.length > 0) {
-      setDeviceHistoryMap((prev) => {
-        const nextMap = new Map(prev);
-        devices.forEach((device) => {
-          if (!nextMap.has(device.id)) {
-            // Generate 30 days of extended history
-            nextMap.set(device.id, getOrCreateExtendedHistory(device.id, device.readings));
-          }
-        });
-        return nextMap;
-      });
-    }
-  }, [devices]);
+  }, [lastRefresh]); // Re-read when refresh happens
 
   // Transform Firebase data to Device array
   const transformFirebaseDataCallback = useCallback(
@@ -81,18 +64,15 @@ export function useFirebaseData() {
               try {
                 const transformedDevices = transformFirebaseDataCallback(data);
                 setDevices(transformedDevices);
-                setDeviceHistoryMap((prev) => {
-                  const nextMap = new Map(prev);
-                  transformedDevices.forEach((device) => {
-                    const updatedHistory = updateDeviceHistory({
-                      deviceId: device.id,
-                      nextReadings: device.readings,
-                      timestamp: device.lastUpdated,
-                    });
-                    nextMap.set(device.id, updatedHistory);
-                  });
-                  return nextMap;
-                });
+                
+                // Extract actual historical data from Firebase instead of generating fake data
+                const firebaseHistories = extractAllDeviceHistories(data);
+                setDeviceHistoryMap(firebaseHistories);
+                
+                console.log('[useFirebaseData] Loaded actual Firebase historical data:', 
+                  Array.from(firebaseHistories.entries()).map(([id, h]) => `${id}: ${h.length} readings`)
+                );
+                
                 setAlerts(generateAlertsFromReadings(transformedDevices));
                 setError(null);
                 setConnectionStatus('connected');
@@ -143,28 +123,23 @@ export function useFirebaseData() {
     };
   }, [transformFirebaseDataCallback]);
 
-  // Get historical data for a device from Firebase
+  // Get historical data for a device from actual Firebase data
   const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
     const now = Date.now();
     const cutoff = now - hours * 60 * 60 * 1000;
     
-    // Check if we have cached data
-    const cached = deviceHistoryMap.get(deviceId);
-    if (cached && cached.length > 0) {
-      const filtered = cached.filter(r => r.timestamp.getTime() >= cutoff);
+    // Get actual Firebase historical data
+    const firebaseHistory = deviceHistoryMap.get(deviceId);
+    if (firebaseHistory && firebaseHistory.length > 0) {
+      const filtered = firebaseHistory.filter(r => r.timestamp.getTime() >= cutoff);
       const sorted = filtered.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} cached=${cached.length} filtered=${sorted.length}`);
+      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} total=${firebaseHistory.length} filtered=${sorted.length} (actual Firebase data)`);
       return sorted;
     }
     
-    // Fallback: generate extended history
-    const device = devices.find(d => d.id === deviceId);
-    if (!device) return [];
-    const generated = getOrCreateExtendedHistory(deviceId, device.readings);
-    const filteredGenerated = generated.filter(r => r.timestamp.getTime() >= cutoff);
-    console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} generated=${filteredGenerated.length}`);
-    return filteredGenerated;
-  }, [deviceHistoryMap, devices]);
+    console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} - no Firebase data available`);
+    return [];
+  }, [deviceHistoryMap]);
 
   // Update device thresholds
   const updateDeviceThresholds = useCallback((deviceId: string, thresholds: SensorThresholds) => {

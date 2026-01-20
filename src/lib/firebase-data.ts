@@ -118,6 +118,44 @@ interface TransformOptions {
   defaultThresholds: SensorThresholds;
 }
 
+// Extract all historical readings from Firebase data for a specific plot
+export const extractHistoricalReadings = (
+  plotData: FirebasePlotData
+): { timestamp: Date; readings: SensorReading }[] => {
+  const readings: { timestamp: Date; readings: SensorReading }[] = [];
+  
+  Object.entries(plotData).forEach(([timestampKey, reading]) => {
+    const timestamp = parseFirebaseTimestamp(timestampKey);
+    readings.push({
+      timestamp,
+      readings: {
+        moisture: reading.moisture ?? 0,
+        temperature: reading.temperature ?? 0,
+        ph: reading.ph ?? 7,
+        ec: reading.ec ?? 0,
+      },
+    });
+  });
+  
+  // Sort by timestamp ascending
+  return readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+};
+
+// Extract all historical data for all devices from Firebase
+export const extractAllDeviceHistories = (
+  data: FirebaseDevicesData
+): Map<string, { timestamp: Date; readings: SensorReading }[]> => {
+  const historyMap = new Map<string, { timestamp: Date; readings: SensorReading }[]>();
+  
+  Object.entries(data).forEach(([plotId, plotData]) => {
+    const deviceId = `device-${plotId}`;
+    const history = extractHistoricalReadings(plotData);
+    historyMap.set(deviceId, history);
+  });
+  
+  return historyMap;
+};
+
 export const transformFirebaseData = (
   data: FirebaseDevicesData,
   { customThresholds, defaultThresholds }: TransformOptions
