@@ -1,4 +1,4 @@
-import { Alert, Device, HistoricalReading, SensorReading, SensorThresholds } from '@/types/device';
+import { Alert, Device, SensorReading, SensorThresholds } from '@/types/device';
 
 export interface FirebaseReading {
   ec: number;
@@ -117,39 +117,6 @@ interface TransformOptions {
   customThresholds: Map<string, SensorThresholds>;
   defaultThresholds: SensorThresholds;
 }
-
-// Extract all historical readings from Firebase plot data
-export const extractHistoricalReadings = (plotData: FirebasePlotData): HistoricalReading[] => {
-  const timestamps = Object.keys(plotData).sort();
-  
-  return timestamps.map((timestamp) => {
-    const reading = plotData[timestamp];
-    return {
-      timestamp: parseFirebaseTimestamp(timestamp),
-      readings: {
-        moisture: reading.moisture ?? 0,
-        temperature: reading.temperature ?? 0,
-        ph: reading.ph ?? 7,
-        ec: reading.ec ?? 0,
-      },
-    };
-  }).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-};
-
-// Extract all historical data for all devices from Firebase
-export const extractAllDeviceHistory = (
-  data: FirebaseDevicesData
-): Map<string, HistoricalReading[]> => {
-  const historyMap = new Map<string, HistoricalReading[]>();
-  
-  Object.entries(data).forEach(([plotId, plotData]) => {
-    const deviceId = `device-${plotId}`;
-    const history = extractHistoricalReadings(plotData);
-    historyMap.set(deviceId, history);
-  });
-  
-  return historyMap;
-};
 
 export const transformFirebaseData = (
   data: FirebaseDevicesData,
