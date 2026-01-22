@@ -5,6 +5,8 @@ export interface FirebaseReading {
   moisture: number;
   ph: number;
   temperature: number;
+  signalStrength?: number;  // Optional: from IoT device if available
+  batteryLevel?: number;     // Optional: from IoT device if available
 }
 
 export interface FirebasePlotData {
@@ -57,8 +59,12 @@ export const getDeviceStatus = (
 };
 
 // Parse timestamp from Firebase key (format: 2026-01-15-02-53-41)
+// Parse timestamp from Firebase key (format: 2026-01-15-02-53-41 OR 2026-01-15_02-53-41)
 export const parseFirebaseTimestamp = (key: string): Date => {
-  const parts = key.split('-');
+  // Replace underscores with hyphens to handle both formats
+  const normalizedKey = key.replace(/_/g, '-');
+  const parts = normalizedKey.split('-');
+
   if (parts.length >= 6) {
     const [year, month, day, hour, minute, second] = parts.map(Number);
     return new Date(year, month - 1, day, hour, minute, second);
@@ -123,7 +129,7 @@ export const extractHistoricalReadings = (
   plotData: FirebasePlotData
 ): { timestamp: Date; readings: SensorReading }[] => {
   const readings: { timestamp: Date; readings: SensorReading }[] = [];
-  
+
   Object.entries(plotData).forEach(([timestampKey, reading]) => {
     const timestamp = parseFirebaseTimestamp(timestampKey);
     readings.push({
@@ -136,7 +142,7 @@ export const extractHistoricalReadings = (
       },
     });
   });
-  
+
   // Sort by timestamp ascending
   return readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 };
@@ -146,13 +152,21 @@ export const extractAllDeviceHistories = (
   data: FirebaseDevicesData
 ): Map<string, { timestamp: Date; readings: SensorReading }[]> => {
   const historyMap = new Map<string, { timestamp: Date; readings: SensorReading }[]>();
-  
+
+  console.log('[extractAllDeviceHistories] Processing Firebase data for', Object.keys(data).length, 'plots');
+
   Object.entries(data).forEach(([plotId, plotData]) => {
     const deviceId = `device-${plotId}`;
     const history = extractHistoricalReadings(plotData);
     historyMap.set(deviceId, history);
+
+    const timeRange = history.length > 0
+      ? `${history[0].timestamp.toLocaleString()} to ${history[history.length - 1].timestamp.toLocaleString()}`
+      : 'no data';
+
+    console.log(`[extractAllDeviceHistories] ${deviceId}: ${history.length} readings, ${timeRange}`);
   });
-  
+
   return historyMap;
 };
 
@@ -192,8 +206,8 @@ export const transformFirebaseData = (
         plotName: plotConfig.name,
         plotId: `plot-${plotId}`,
         status,
-        signalStrength: 85 + Math.floor(Math.random() * 15), // Simulated
-        batteryLevel: 70 + Math.floor(Math.random() * 30), // Simulated
+        signalStrength: reading.signalStrength ?? 0, // From Firebase or 0
+        batteryLevel: reading.batteryLevel ?? 0, // From Firebase or 0
         lastUpdated: parseFirebaseTimestamp(latestTimestamp),
         readings: sensorReading,
         thresholds,

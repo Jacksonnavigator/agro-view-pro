@@ -64,15 +64,17 @@ export function useFirebaseData() {
               try {
                 const transformedDevices = transformFirebaseDataCallback(data);
                 setDevices(transformedDevices);
-                
+
                 // Extract actual historical data from Firebase instead of generating fake data
                 const firebaseHistories = extractAllDeviceHistories(data);
                 setDeviceHistoryMap(firebaseHistories);
-                
-                console.log('[useFirebaseData] Loaded actual Firebase historical data:', 
+
+                console.log('[useFirebaseData] Firebase snapshot received. Devices:', transformedDevices.length, 'History map size:', firebaseHistories.size);
+
+                console.log('[useFirebaseData] Loaded actual Firebase historical data:',
                   Array.from(firebaseHistories.entries()).map(([id, h]) => `${id}: ${h.length} readings`)
                 );
-                
+
                 setAlerts(generateAlertsFromReadings(transformedDevices));
                 setError(null);
                 setConnectionStatus('connected');
@@ -83,6 +85,7 @@ export function useFirebaseData() {
                 // Don't disconnect, just show error
               }
             } else {
+              console.log('[useFirebaseData] Firebase snapshot is empty - no devices data');
               setDevices([]);
               setAlerts([]);
               setConnectionStatus('connected'); // Empty but connected
@@ -125,19 +128,31 @@ export function useFirebaseData() {
 
   // Get historical data for a device from actual Firebase data
   const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
-    const now = Date.now();
-    const cutoff = now - hours * 60 * 60 * 1000;
-    
     // Get actual Firebase historical data
     const firebaseHistory = deviceHistoryMap.get(deviceId);
+
     if (firebaseHistory && firebaseHistory.length > 0) {
-      const filtered = firebaseHistory.filter(r => r.timestamp.getTime() >= cutoff);
-      const sorted = filtered.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} total=${firebaseHistory.length} filtered=${sorted.length} (actual Firebase data)`);
-      return sorted;
+      // Find the latest timestamp in the data
+      // We sort first to find the true end time
+      // This enables "Relative Time" filtering - showing the last X hours of DATA, not WALL CLOCK time
+      // This addresses the user's need to see "not only for today" but data "as sorted"
+      const allSorted = [...firebaseHistory].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+      const latestDataTime = allSorted[allSorted.length - 1].timestamp.getTime();
+      const cutoff = latestDataTime - hours * 60 * 60 * 1000;
+
+      // Filter relative to the latest data point
+      const filtered = allSorted.filter(r => r.timestamp.getTime() >= cutoff);
+
+      const timeRangeInfo = filtered.length > 0
+        ? `from ${filtered[0].timestamp.toLocaleString()} to ${filtered[filtered.length - 1].timestamp.toLocaleString()}`
+        : 'no data in relative range';
+
+      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} (relative to data) filtered=${filtered.length} (total=${firebaseHistory.length}) ${timeRangeInfo}`);
+      return filtered;
     }
-    
-    console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} - no Firebase data available`);
+
+    console.log(`[getDeviceHistory] deviceId=${deviceId} - no Firebase data available in deviceHistoryMap`);
     return [];
   }, [deviceHistoryMap]);
 

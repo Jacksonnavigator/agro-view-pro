@@ -82,7 +82,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     error,
     lastRefresh,
     refreshData,
-    getDeviceHistory,
+    getDeviceHistory: getFirebaseHistory,
     updateDeviceThresholds: updateThresholds,
   } = useFirebaseData();
 
@@ -105,6 +105,48 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     (id: string) => devices.find((d) => d.id === id),
     [devices]
   );
+
+  // Get historical data with improved filtering and fallback
+  const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
+    const now = Date.now();
+    const cutoff = now - hours * 60 * 60 * 1000;
+    
+    // Get actual Firebase historical data
+    const firebaseHistory = getFirebaseHistory(deviceId, hours);
+    
+    if (!firebaseHistory || firebaseHistory.length === 0) {
+      console.warn(`[DeviceContext] No Firebase data for deviceId=${deviceId}`);
+      return [];
+    }
+    
+    // Log all timestamps to see the data range
+    const timestamps = firebaseHistory.map(r => r.timestamp.getTime());
+    const oldestTimestamp = Math.min(...timestamps);
+    const newestTimestamp = Math.max(...timestamps);
+    
+    console.log(`[DeviceContext.getDeviceHistory] Device: ${deviceId}
+      Total points: ${firebaseHistory.length}
+      Oldest: ${new Date(oldestTimestamp).toISOString()}
+      Newest: ${new Date(newestTimestamp).toISOString()}
+      Requested hours: ${hours}
+      Cutoff: ${new Date(cutoff).toISOString()}
+      Now: ${new Date(now).toISOString()}
+    `);
+    
+    // Filter by time range
+    const filtered = firebaseHistory.filter(r => r.timestamp.getTime() >= cutoff);
+    
+    // If no data in range, return all data with a warning
+    if (filtered.length === 0) {
+      console.warn(`[DeviceContext] No data in requested time range. Showing all ${firebaseHistory.length} points instead.`);
+      return firebaseHistory.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    }
+    
+    const sorted = filtered.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    console.log(`[DeviceContext] Returning ${sorted.length} filtered points`);
+    
+    return sorted;
+  }, [getFirebaseHistory]);
 
   // Acknowledge an alert
   const acknowledgeAlert = useCallback((alertId: string) => {

@@ -24,6 +24,7 @@ const Plots = lazy(() => import("./pages/Plots"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Compare = lazy(() => import("./pages/Compare"));
+const DebugData = lazy(() => import("./pages/DebugData"));
 
 // Loading fallback component
 function PageLoader() {
@@ -132,6 +133,7 @@ const App = () => (
                     </Suspense>
                   }
                 />
+
               </Route>
 
               {/* Catch-all route */}

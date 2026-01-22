@@ -28,8 +28,38 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
   // Generate aggregated chart data from first device's history (real data from Firebase hook)
   const aggregatedChartData = useMemo(() => {
     if (devices.length === 0) return [];
-    return getDeviceHistory(devices[0].id, selectedHours);
+    const history = getDeviceHistory(devices[0].id, selectedHours);
+    console.log('[Dashboard] Chart data points:', history.length);
+    return history;
   }, [devices, getDeviceHistory, selectedHours]);
+
+  // Calculate real system health stats from devices
+  const systemStats = useMemo(() => {
+    if (devices.length === 0) {
+      return {
+        avgUptime: 0,
+        avgSignal: 0,
+        avgBattery: 0,
+        totalReadings: 0
+      };
+    }
+
+    // Calculate real averages from device data
+    const totalSignal = devices.reduce((sum, d) => sum + d.signalStrength, 0);
+    const totalBattery = devices.reduce((sum, d) => sum + d.batteryLevel, 0);
+    const onlineCount = devices.filter(d => d.status === 'online').length;
+
+    // Estimate readings per hour based on device count
+    // Assuming each device sends 1 reading per minute
+    const readingsPerHour = devices.length * 60;
+
+    return {
+      avgUptime: ((onlineCount / devices.length) * 100).toFixed(1),
+      avgSignal: Math.round(totalSignal / devices.length),
+      avgBattery: Math.round(totalBattery / devices.length),
+      totalReadings: readingsPerHour
+    };
+  }, [devices]);
 
   if (isLoading && devices.length === 0) {
     return (
@@ -166,44 +196,44 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              {/* Device uptime stats */}
+              {/* Device uptime stats - REAL DATA */}
               <div className="rounded-lg border bg-secondary/30 p-4">
                 <p className="text-sm text-muted-foreground">Average Uptime</p>
                 <p className="mt-1 font-mono text-3xl font-bold text-success">
-                  99.2%
+                  {systemStats.avgUptime}%
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Last 30 days
+                  {devices.filter(d => d.status === 'online').length} of {devices.length} online
                 </p>
               </div>
 
-              {/* Data transmission rate */}
+              {/* Data transmission rate - REAL DATA */}
               <div className="rounded-lg border bg-secondary/30 p-4">
                 <p className="text-sm text-muted-foreground">Data Rate</p>
                 <p className="mt-1 font-mono text-3xl font-bold text-info">
-                  847
+                  {systemStats.totalReadings}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  readings/hour
+                  readings/hour estimated
                 </p>
               </div>
 
-              {/* Signal quality */}
+              {/* Signal quality - REAL DATA */}
               <div className="rounded-lg border bg-secondary/30 p-4">
                 <p className="text-sm text-muted-foreground">Avg Signal</p>
                 <p className="mt-1 font-mono text-3xl font-bold text-primary">
-                  78%
+                  {systemStats.avgSignal}%
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   network strength
                 </p>
               </div>
 
-              {/* Battery status */}
+              {/* Battery status - REAL DATA */}
               <div className="rounded-lg border bg-secondary/30 p-4">
                 <p className="text-sm text-muted-foreground">Avg Battery</p>
                 <p className="mt-1 font-mono text-3xl font-bold text-warning">
-                  72%
+                  {systemStats.avgBattery}%
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   device average

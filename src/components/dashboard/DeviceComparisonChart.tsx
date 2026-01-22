@@ -81,7 +81,7 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
     const firstDevice = selectedDevices[0];
     if (!deviceHistories[firstDevice]) return [];
 
-    return deviceHistories[firstDevice]
+    const result = deviceHistories[firstDevice]
       .map((reading, index) => {
         const dataPoint: Record<string, number | string> = {
           time: reading.timestamp.getTime(),
@@ -97,6 +97,13 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
         return dataPoint;
       })
       .sort((a, b) => (a.time as number) - (b.time as number));
+
+    const timeRange = result.length > 0
+      ? `${new Date(result[0].time as number).toLocaleString()} to ${new Date(result[result.length - 1].time as number).toLocaleString()}`
+      : 'no data';
+
+    console.log('[DeviceComparisonChart] chartData length:', result.length, 'range:', currentRange.value, 'timeRange:', timeRange);
+    return result;
   }, [selectedDevices, selectedParameter, currentRange.hours, getDeviceHistory]);
 
   const toggleDevice = (deviceId: string) => {
@@ -179,28 +186,33 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chartData}
-                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                margin={{ top: 5, right: 10, left: 0, bottom: 85 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+
                 <XAxis
-dataKey="time"
+                  dataKey="time"
                   type="number"
-                  domain={['dataMin', 'dataMax']}
+                  domain={(() => {
+                    if (chartData.length > 0) return ['dataMin', 'dataMax'];
+                    const now = Date.now();
+                    const hoursInMs = currentRange.hours * 60 * 60 * 1000;
+                    return [now - hoursInMs, now];
+                  })()}
+                  ticks={chartData.length > 0 && chartData.length < 50 ? chartData.map(d => d.time as number) : undefined}
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
+                  fontSize={10}
+                  tickLine={true}
                   axisLine={false}
+                  height={85}
+                  angle={-45}
+                  textAnchor="end"
+                  dy={10}
                   tickFormatter={(value) => {
-                    const date = new Date(value);
-                    if (currentRange.hours <= 24) {
-                      return format(date, 'HH:mm');
-                    } else if (currentRange.hours <= 168) {
-                      return format(date, 'EEE HH:mm');
-                    } else {
-                      return format(date, 'MMM d');
-                    }
+                    return format(new Date(value), 'MMM d, HH:mm:ss');
                   }}
-                  tickCount={6}
+                  minTickGap={0}
+                  interval={0}
                 />
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"
@@ -246,7 +258,7 @@ dataKey="time"
                       name={device?.name || deviceId}
                       stroke={deviceColors[devices.findIndex((d) => d.id === deviceId) % deviceColors.length]}
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 3, strokeWidth: 1 }}
                       activeDot={{ r: 4, strokeWidth: 0 }}
                     />
                   );

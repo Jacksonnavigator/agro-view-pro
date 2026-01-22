@@ -31,38 +31,38 @@ const timeRanges: TimeRange[] = [
 ];
 
 const parameterConfig = {
-  moisture: { 
-    color: 'hsl(199, 89%, 48%)', 
-    label: 'Moisture', 
+  moisture: {
+    color: 'hsl(199, 89%, 48%)',
+    label: 'Moisture',
     unit: '%',
     dataKey: 'moisture'
   },
-  temperature: { 
-    color: 'hsl(0, 72%, 51%)', 
-    label: 'Temperature', 
+  temperature: {
+    color: 'hsl(0, 72%, 51%)',
+    label: 'Temperature',
     unit: '°C',
     dataKey: 'temperature'
   },
-  ph: { 
-    color: 'hsl(142, 70%, 45%)', 
-    label: 'pH', 
+  ph: {
+    color: 'hsl(142, 70%, 45%)',
+    label: 'pH',
     unit: '',
     dataKey: 'ph'
   },
-  ec: { 
-    color: 'hsl(280, 65%, 60%)', 
-    label: 'EC', 
+  ec: {
+    color: 'hsl(280, 65%, 60%)',
+    label: 'EC',
     unit: 'mS/cm',
     dataKey: 'ec'
   },
 };
 
-export function SensorChart({ 
-  data, 
-  title, 
-  className, 
+export function SensorChart({
+  data,
+  title,
+  className,
   showControls = true,
-  onTimeRangeChange 
+  onTimeRangeChange
 }: SensorChartProps) {
   const [selectedRange, setSelectedRange] = useState<TimeRange['value']>('24h');
   const [visibleParams, setVisibleParams] = useState<Set<string>>(
@@ -77,7 +77,12 @@ export function SensorChart({
         ...reading.readings,
       }))
       .sort((a, b) => a.time - b.time);
-    console.log('[SensorChart] chartData length', mapped.length, 'selectedRange', selectedRange);
+
+    const timeRange = mapped.length > 0
+      ? `${new Date(mapped[0].time).toLocaleString()} to ${new Date(mapped[mapped.length - 1].time).toLocaleString()}`
+      : 'no data';
+
+    console.log('[SensorChart] chartData length:', mapped.length, 'selectedRange:', selectedRange, 'timeRange:', timeRange);
     return mapped;
   }, [data, selectedRange]);
 
@@ -106,7 +111,7 @@ export function SensorChart({
         {title && (
           <h3 className="font-semibold text-foreground">{title}</h3>
         )}
-        
+
         {showControls && (
           <div className="flex items-center gap-2">
             {/* Time range selector */}
@@ -159,33 +164,38 @@ export function SensorChart({
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
-            margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+            margin={{ top: 5, right: 10, left: 0, bottom: 85 }}
           >
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="hsl(var(--border))" 
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
               vertical={false}
             />
+
             <XAxis
               dataKey="time"
               type="number"
-              domain={['dataMin', 'dataMax']}
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => {
-                const date = new Date(value);
+              domain={(() => {
+                if (chartData.length > 0) return ['dataMin', 'dataMax'];
+                const now = Date.now();
                 const range = timeRanges.find(r => r.value === selectedRange);
-                if (!range || range.hours <= 24) {
-                  return format(date, 'HH:mm');
-                } else if (range.hours <= 168) {
-                  return format(date, 'EEE HH:mm');
-                } else {
-                  return format(date, 'MMM d');
-                }
+                const hoursInMs = (range?.hours || 24) * 60 * 60 * 1000;
+                return [now - hoursInMs, now];
+              })()}
+              ticks={chartData.length < 50 ? chartData.map(d => d.time) : undefined}
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={10}
+              tickLine={true}
+              axisLine={false}
+              height={85}
+              angle={-45}
+              textAnchor="end"
+              dy={10}
+              tickFormatter={(value) => {
+                return format(new Date(value), 'MMM d, HH:mm:ss');
               }}
-              tickCount={6}
+              minTickGap={0}
+              interval={0}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
@@ -215,7 +225,7 @@ export function SensorChart({
               iconType="circle"
               iconSize={8}
             />
-            
+
             {Object.entries(parameterConfig).map(([key, config]) =>
               visibleParams.has(key) ? (
                 <Line
@@ -225,7 +235,7 @@ export function SensorChart({
                   name={`${config.label}${config.unit ? ` (${config.unit})` : ''}`}
                   stroke={config.color}
                   strokeWidth={2}
-                  dot={false}
+                  dot={{ r: 3, strokeWidth: 1 }}
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               ) : null
