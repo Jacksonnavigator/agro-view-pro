@@ -14,20 +14,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Mock users for demonstration
 const mockUsers: Record<string, { password: string; user: User }> = {
-  'admin@soilmonitor.io': {
+  'admin@agroview.pro': {
     password: 'admin123',
     user: {
       id: 'user-1',
-      email: 'admin@soilmonitor.io',
+      email: 'admin@agroview.pro',
       name: 'Admin User',
       role: 'admin',
     },
   },
-  'viewer@soilmonitor.io': {
+  'viewer@agroview.pro': {
     password: 'viewer123',
     user: {
       id: 'user-2',
-      email: 'viewer@soilmonitor.io',
+      email: 'viewer@agroview.pro',
       name: 'Viewer User',
       role: 'viewer',
     },

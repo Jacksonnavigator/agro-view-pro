@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Leaf, Loader2, AlertCircle, Eye, EyeOff, Sparkles, Shield } from 'lucide-react';
+import { Loader2, AlertCircle, Eye, EyeOff, Sparkles, Shield } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,16 +49,20 @@ export default function Login() {
       <div className="absolute inset-0 data-grid opacity-20" />
       <div className="absolute top-1/4 -left-32 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
       <div className="absolute bottom-1/4 -right-32 h-64 w-64 rounded-full bg-success/10 blur-3xl" />
-      
+
       <div className="relative w-full max-w-md fade-in">
         {/* Logo and branding */}
         <div className="flex flex-col items-center mb-8">
           <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success shadow-2xl shadow-primary/30 mb-5 group">
-            <Leaf className="h-9 w-9 text-primary-foreground transition-transform duration-300 group-hover:scale-110" />
+            <img
+              src="/favicon.png"
+              alt="AgroView Pro"
+              className="h-10 w-10 rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-110"
+            />
             <Sparkles className="absolute -right-1 -top-1 h-4 w-4 text-warning animate-pulse" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">
-            <span className="gradient-text">SoilMonitor</span>
+            <span className="gradient-text">AgroView Pro</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
             <Shield className="h-3.5 w-3.5" />
@@ -90,7 +94,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@soilmonitor.io"
+                  placeholder="admin@agroview.pro"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -150,10 +154,10 @@ export default function Login() {
               </p>
               <div className="space-y-1.5 text-xs font-mono">
                 <p className="text-foreground/80">
-                  Admin: admin@soilmonitor.io / admin123
+                  Admin: admin@agroview.pro / admin123
                 </p>
                 <p className="text-foreground/80">
-                  Viewer: viewer@soilmonitor.io / viewer123
+                  Viewer: viewer@agroview.pro / viewer123
                 </p>
               </div>
             </div>
@@ -161,7 +165,7 @@ export default function Login() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          © 2024 SoilMonitor. Enterprise IoT Monitoring Platform.
+          © 2024 AgroView Pro. Enterprise IoT Monitoring Platform.
         </p>
       </div>
     </div>
