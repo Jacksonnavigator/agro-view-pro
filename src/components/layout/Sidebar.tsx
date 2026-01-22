@@ -15,9 +15,7 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
-  Leaf,
   GitCompare,
-  Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -48,12 +46,13 @@ export function Sidebar() {
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border/50 px-4">
         {!collapsed && (
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-success shadow-lg shadow-primary/20 transition-transform duration-300 group-hover:scale-105">
-              <Leaf className="h-5 w-5 text-primary-foreground" />
-              <Sparkles className="absolute -right-1 -top-1 h-3 w-3 text-warning animate-pulse" />
-            </div>
+            <img
+              src="/favicon.png"
+              alt="AgroView Pro"
+              className="h-9 w-9 rounded-xl shadow-lg shadow-primary/20 transition-transform duration-300 group-hover:scale-105"
+            />
             <div>
-              <span className="font-bold text-sidebar-foreground">SoilMonitor</span>
+              <span className="font-bold text-sidebar-foreground">AgroView Pro</span>
               <p className="text-[10px] text-muted-foreground -mt-0.5">IoT Dashboard</p>
             </div>
           </Link>
@@ -75,7 +74,7 @@ export function Sidebar() {
             // Hide admin-only items from non-admin users
             if (item.adminOnly && !hasRole('admin')) return null;
 
-            const isActive = location.pathname === item.path || 
+            const isActive = location.pathname === item.path ||
               (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
 
             return (
