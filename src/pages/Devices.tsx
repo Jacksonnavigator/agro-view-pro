@@ -36,12 +36,12 @@ import { ErrorState } from '@/components/ui/error-state';
 import {
   Search,
   Filter,
-  Wifi,
-  Battery,
   ExternalLink,
   Droplets,
   Thermometer,
+  Download,
 } from 'lucide-react';
+import { exportDevicesCSV } from '@/utils/exportUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { DeviceStatus } from '@/types/device';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -140,9 +140,25 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
   return (
     <div className="space-y-6 fade-in">
       <Header
-        title="Devices"
-        subtitle="Manage and monitor all sensor devices"
-      />
+        title="Live Data Hub"
+        subtitle="Comprehensive real-time monitoring across the entire sensor network"
+      >
+        <div className="flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 animate-glow-pulse">
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Live Monitor Active</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-white/5 bg-white/5 hover:bg-white/10"
+            onClick={() => exportDevicesCSV(devices)}
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export All</span>
+          </Button>
+        </div>
+      </Header>
 
       {/* Filters */}
       <Card>
@@ -167,7 +183,6 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
                   <SelectItem value="offline">Offline</SelectItem>
                 </SelectContent>
               </Select>
@@ -190,131 +205,130 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
         </CardContent>
       </Card>
 
-      {/* Devices table */}
-      <Card>
+      <Card className="premium-card border-white/5 shadow-2xl overflow-hidden">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Device</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Moisture</TableHead>
-                <TableHead className="hidden md:table-cell">Temp</TableHead>
-                <TableHead className="hidden lg:table-cell">Signal</TableHead>
-                <TableHead className="hidden lg:table-cell">Battery</TableHead>
-                <TableHead className="hidden sm:table-cell">Last Update</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedDevices.map((device) => (
-                <TableRow key={device.id} className="group">
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{device.name}</p>
-                      <p className="text-xs text-muted-foreground">{device.plotName}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusIndicator status={device.status} showLabel size="sm" />
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-1.5 font-mono text-sm">
-                      <Droplets className="h-3.5 w-3.5 text-chart-moisture" />
-                      {device.readings.moisture}%
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-1.5 font-mono text-sm">
-                      <Thermometer className="h-3.5 w-3.5 text-chart-temperature" />
-                      {device.readings.temperature}°C
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Wifi className="h-3.5 w-3.5" />
-                      {device.signalStrength}%
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Battery className="h-3.5 w-3.5" />
-                      {device.batteryLevel}%
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                    {formatDistanceToNow(device.lastUpdated, { addSuffix: true })}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Link to={`/device/${device.id}`}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto scrollbar-hide">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-white/5 hover:bg-transparent">
+                  <TableHead className="w-[200px]">Device & Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Moisture</TableHead>
+                  <TableHead className="text-right">Temp</TableHead>
+                  <TableHead className="text-right">pH</TableHead>
+                  <TableHead className="text-right">EC</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Nitrogen</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Phosphorus</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Potassium</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
-              ))}
-
-              {filteredDevices.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    <p className="text-muted-foreground">No devices found</p>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-        {totalPages > 1 && (
-          <CardFooter className="py-4 border-t">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-
-                {getPageNumbers().map((page, idx) => (
-                  <PaginationItem key={idx}>
-                    {page === 'ellipsis' ? (
-                      <PaginationEllipsis />
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        isActive={page === currentPage}
-                        onClick={(e) => { e.preventDefault(); setCurrentPage(page as number); }}
+              </TableHeader>
+              <TableBody>
+                {paginatedDevices.map((device) => (
+                  <TableRow key={device.id} className="group border-white/5 hover:bg-white/[0.02] transition-colors text-[13px]">
+                    <TableCell>
+                      <div className="py-1">
+                        <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{device.name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight">{device.plotName}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusIndicator status={device.status} showLabel size="sm" />
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      <span className="text-info">{device.readings.moisture}%</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      <span className="text-warning">{device.readings.temperature}°C</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      <span className="text-success">{device.readings.ph}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-purple-400">
+                      {device.readings.ec}
+                    </TableCell>
+                    <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-80">
+                      {device.readings.nitrogen ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
+                    </TableCell>
+                    <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-80">
+                      {device.readings.phosphorus ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
+                    </TableCell>
+                    <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-80">
+                      {device.readings.potassium ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-all hover:bg-primary/20 hover:text-primary"
                       >
-                        {page}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
+                        <Link to={`/device/${device.id}`}>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
 
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
-                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </CardFooter>
-        )}
-      </Card>
+                {filteredDevices.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={10} className="h-24 text-center">
+                      <p className="text-muted-foreground">No devices found</p>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+        {
+          totalPages > 1 && (
+            <CardFooter className="py-4 border-t border-white/5">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+
+                  {getPageNumbers().map((page, idx) => (
+                    <PaginationItem key={idx}>
+                      {page === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          isActive={page === currentPage}
+                          onClick={(e) => { e.preventDefault(); setCurrentPage(page as number); }}
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </CardFooter>
+          )
+        }
+      </Card >
 
       <div className="text-sm text-muted-foreground text-center">
         Showing {paginatedDevices.length} of {filteredDevices.length} devices
       </div>
-    </div>
+    </div >
   );
 });
 

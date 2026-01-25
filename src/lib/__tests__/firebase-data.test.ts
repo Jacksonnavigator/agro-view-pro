@@ -5,8 +5,7 @@ export interface FirebaseReading {
   moisture: number;
   ph: number;
   temperature: number;
-  signal?: number; // Add signal strength from Firebase
-  battery?: number; // Add battery level from Firebase
+
 }
 
 export interface FirebasePlotData {
@@ -125,7 +124,7 @@ export const extractHistoricalReadings = (
   plotData: FirebasePlotData
 ): { timestamp: Date; readings: SensorReading }[] => {
   const readings: { timestamp: Date; readings: SensorReading }[] = [];
-  
+
   Object.entries(plotData).forEach(([timestampKey, reading]) => {
     const timestamp = parseFirebaseTimestamp(timestampKey);
     readings.push({
@@ -138,7 +137,7 @@ export const extractHistoricalReadings = (
       },
     });
   });
-  
+
   // Sort by timestamp ascending
   return readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 };
@@ -148,31 +147,17 @@ export const extractAllDeviceHistories = (
   data: FirebaseDevicesData
 ): Map<string, { timestamp: Date; readings: SensorReading }[]> => {
   const historyMap = new Map<string, { timestamp: Date; readings: SensorReading }[]>();
-  
+
   Object.entries(data).forEach(([plotId, plotData]) => {
     const deviceId = `device-${plotId}`;
     const history = extractHistoricalReadings(plotData);
     historyMap.set(deviceId, history);
   });
-  
+
   return historyMap;
 };
 
-// Calculate average signal and battery from historical readings
-const calculateAverages = (plotData: FirebasePlotData): { signal: number; battery: number } => {
-  const readings = Object.values(plotData);
-  if (readings.length === 0) {
-    return { signal: 75, battery: 75 }; // Fallback defaults
-  }
 
-  // Get the most recent reading for signal/battery
-  const latestReading = readings[readings.length - 1];
-  
-  return {
-    signal: latestReading.signal ?? 75, // Use Firebase value or fallback
-    battery: latestReading.battery ?? 75, // Use Firebase value or fallback
-  };
-};
 
 export const transformFirebaseData = (
   data: FirebaseDevicesData,
@@ -204,8 +189,7 @@ export const transformFirebaseData = (
         description: 'Monitoring zone',
       };
 
-      // Calculate averages from all readings
-      const averages = calculateAverages(plotData);
+
 
       devicesList.push({
         id: deviceId,
@@ -213,8 +197,7 @@ export const transformFirebaseData = (
         plotName: plotConfig.name,
         plotId: `plot-${plotId}`,
         status,
-        signalStrength: averages.signal, // Use real data from Firebase
-        batteryLevel: averages.battery,  // Use real data from Firebase
+
         lastUpdated: parseFirebaseTimestamp(latestTimestamp),
         readings: sensorReading,
         thresholds,

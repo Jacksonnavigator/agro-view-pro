@@ -9,11 +9,8 @@ import {
   Thermometer,
   FlaskConical,
   Zap,
-  Wifi,
-  Battery,
   Clock,
   ChevronRight,
-  Signal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -45,13 +42,12 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
 
   const statusGlow = {
     online: 'hover:shadow-[0_0_30px_hsl(145_70%_45%/0.15)]',
-    warning: 'hover:shadow-[0_0_30px_hsl(38_92%_50%/0.15)]',
     offline: 'hover:shadow-[0_0_30px_hsl(0_72%_51%/0.15)]',
   };
 
   return (
     <Card className={cn(
-      'group relative overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1',
+      'group relative overflow-hidden premium-card border-white/5 bg-gradient-to-br from-card to-card/90 backdrop-blur-2xl transition-all duration-500 hover:-translate-y-2',
       statusGlow[device.status],
       className
     )}>
@@ -59,7 +55,6 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
       <div className={cn(
         'absolute left-0 top-0 h-full w-1 transition-all duration-300',
         device.status === 'online' && 'bg-success',
-        device.status === 'warning' && 'bg-warning',
         device.status === 'offline' && 'bg-destructive'
       )} />
 
@@ -72,24 +67,7 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             </div>
             <p className="text-sm text-muted-foreground">{device.plotName}</p>
           </div>
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <div className="flex items-center gap-1.5" title="Signal Strength">
-              <Signal className={cn(
-                'h-3.5 w-3.5',
-                device.signalStrength > 70 ? 'text-success' :
-                  device.signalStrength > 40 ? 'text-warning' : 'text-destructive'
-              )} />
-              <span className="text-xs font-mono">{device.signalStrength}%</span>
-            </div>
-            <div className="flex items-center gap-1.5" title="Battery Level">
-              <Battery className={cn(
-                'h-3.5 w-3.5',
-                device.batteryLevel > 50 ? 'text-success' :
-                  device.batteryLevel > 20 ? 'text-warning' : 'text-destructive'
-              )} />
-              <span className="text-xs font-mono">{device.batteryLevel}%</span>
-            </div>
-          </div>
+
         </div>
       </CardHeader>
 
@@ -98,10 +76,10 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
         <div className="grid grid-cols-2 gap-2">
           {/* Moisture */}
           <div className={cn(
-            'rounded-xl border p-3 transition-all duration-200',
+            'rounded-2xl border p-3.5 transition-all duration-300',
             moistureStatus
-              ? 'border-warning/40 bg-warning/5'
-              : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
+              ? 'border-warning/30 bg-warning/5 ring-1 ring-warning/10'
+              : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.06]'
           )}>
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-info/10 p-1.5">
@@ -116,14 +94,14 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
 
           {/* Temperature */}
           <div className={cn(
-            'rounded-xl border p-3 transition-all duration-200',
+            'rounded-2xl border p-3.5 transition-all duration-300',
             tempStatus
-              ? 'border-warning/40 bg-warning/5'
-              : 'border-border/30 bg-secondary/20 hover:bg-secondary/30'
+              ? 'border-warning/30 bg-warning/5 ring-1 ring-warning/10'
+              : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.06]'
           )}>
             <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-destructive/10 p-1.5">
-                <Thermometer className="h-3.5 w-3.5 text-destructive" />
+              <div className="rounded-lg bg-warning/10 p-1.5">
+                <Thermometer className="h-3.5 w-3.5 text-warning" />
               </div>
               <span className="text-xs text-muted-foreground">Temp</span>
             </div>

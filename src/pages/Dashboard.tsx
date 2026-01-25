@@ -4,7 +4,7 @@ import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
 import { DeviceCard } from '@/components/dashboard/DeviceCard';
-import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
+
 import { SensorChart } from '@/components/dashboard/SensorChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
 import { ConnectionStatus } from '@/components/ui/connection-status';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { WifiOff } from 'lucide-react';
+import { WifiOff, Activity } from 'lucide-react';
 import { TimeRange } from '@/types/device';
 
 const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, ref) {
@@ -38,15 +38,12 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
     if (devices.length === 0) {
       return {
         avgUptime: 0,
-        avgSignal: 0,
-        avgBattery: 0,
         totalReadings: 0
       };
     }
 
     // Calculate real averages from device data
-    const totalSignal = devices.reduce((sum, d) => sum + d.signalStrength, 0);
-    const totalBattery = devices.reduce((sum, d) => sum + d.batteryLevel, 0);
+
     const onlineCount = devices.filter(d => d.status === 'online').length;
 
     // Estimate readings per hour based on device count
@@ -55,8 +52,6 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
 
     return {
       avgUptime: ((onlineCount / devices.length) * 100).toFixed(1),
-      avgSignal: Math.round(totalSignal / devices.length),
-      avgBattery: Math.round(totalBattery / devices.length),
       totalReadings: readingsPerHour
     };
   }, [devices]);
@@ -125,61 +120,45 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
       {/* Statistics overview */}
       <StatsOverview />
 
-      {/* Main content grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Device cards section - spans 2 columns */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Device Status</h2>
-            <span className="text-sm text-muted-foreground">
-              {devices.length} devices
-            </span>
-          </div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Device Status</h2>
+          <span className="text-sm text-muted-foreground">
+            {devices.length} devices
+          </span>
+        </div>
 
-          {/* Tabs for plot-based filtering */}
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">All Devices</TabsTrigger>
-              {plots.map((plot) => (
-                <TabsTrigger key={plot.id} value={plot.id}>
-                  {plot.name}
-                </TabsTrigger>
+        {/* Tabs for plot-based filtering */}
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="mb-6 p-1 bg-white/5 border-white/10 rounded-2xl glass">
+            <TabsTrigger value="all" className="rounded-xl px-6">All Devices</TabsTrigger>
+            {plots.map((plot) => (
+              <TabsTrigger key={plot.id} value={plot.id} className="rounded-xl px-6">
+                {plot.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="all" className="mt-0">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {devices.map((device) => (
+                <DeviceCard key={device.id} device={device} />
               ))}
-            </TabsList>
+            </div>
+          </TabsContent>
 
-            <TabsContent value="all" className="mt-0">
+          {plots.map((plot) => (
+            <TabsContent key={plot.id} value={plot.id} className="mt-0">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {devices.map((device) => (
-                  <DeviceCard key={device.id} device={device} />
-                ))}
+                {devices
+                  .filter((d) => d.plotId === plot.id)
+                  .map((device) => (
+                    <DeviceCard key={device.id} device={device} />
+                  ))}
               </div>
             </TabsContent>
-
-            {plots.map((plot) => (
-              <TabsContent key={plot.id} value={plot.id} className="mt-0">
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {devices
-                    .filter((d) => d.plotId === plot.id)
-                    .map((device) => (
-                      <DeviceCard key={device.id} device={device} />
-                    ))}
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        </div>
-
-        {/* Alerts panel - spans 1 column */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Recent Alerts</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <AlertsPanel maxItems={8} />
-            </CardContent>
-          </Card>
-        </div>
+          ))}
+        </Tabs>
       </div>
 
       {/* Charts section */}
@@ -190,11 +169,17 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
           onTimeRangeChange={handleTimeRangeChange}
         />
 
-        <Card>
+        <Card className="premium-card border-white/5 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Activity className="h-32 w-32 rotate-12" />
+          </div>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">System Health</CardTitle>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              System Health Registry
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative z-10">
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Device uptime stats - REAL DATA */}
               <div className="rounded-lg border bg-secondary/30 p-4">
@@ -218,32 +203,12 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
                 </p>
               </div>
 
-              {/* Signal quality - REAL DATA */}
-              <div className="rounded-lg border bg-secondary/30 p-4">
-                <p className="text-sm text-muted-foreground">Avg Signal</p>
-                <p className="mt-1 font-mono text-3xl font-bold text-primary">
-                  {systemStats.avgSignal}%
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  network strength
-                </p>
-              </div>
 
-              {/* Battery status - REAL DATA */}
-              <div className="rounded-lg border bg-secondary/30 p-4">
-                <p className="text-sm text-muted-foreground">Avg Battery</p>
-                <p className="mt-1 font-mono text-3xl font-bold text-warning">
-                  {systemStats.avgBattery}%
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  device average
-                </p>
-              </div>
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </div >
   );
 });
 

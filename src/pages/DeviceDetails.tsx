@@ -16,8 +16,6 @@ import {
   Thermometer,
   FlaskConical,
   Zap,
-  Wifi,
-  Battery,
   MapPin,
   ArrowLeft,
   Settings,
@@ -32,20 +30,20 @@ const DeviceDetails = forwardRef<HTMLDivElement, object>(function DeviceDetails(
   const { id } = useParams<{ id: string }>();
   const { getDevice, getDeviceHistory, updateDeviceThresholds } = useDevices();
   const { hasRole } = useAuth();
-  const [timeRange, setTimeRange] = useState<TimeRange>({ 
-    label: '24H', 
-    value: '24h', 
-    hours: 24 
+  const [timeRange, setTimeRange] = useState<TimeRange>({
+    label: '24H',
+    value: '24h',
+    hours: 24
   });
 
   const device = getDevice(id || '');
-  
+
   // Local threshold state for editing
   const [editedThresholds, setEditedThresholds] = useState<SensorThresholds | null>(null);
-  
+
   // Initialize edited thresholds when device loads
   const thresholds = editedThresholds || device?.thresholds;
-  
+
   const historicalData = useMemo(() => {
     if (!id) return [];
     return getDeviceHistory(id, timeRange.hours);
@@ -87,13 +85,13 @@ const DeviceDetails = forwardRef<HTMLDivElement, object>(function DeviceDetails(
         </Button>
       </div>
 
-      <Header 
+      <Header
         title={device.name}
         subtitle={`${device.plotName} • Last updated ${format(device.lastUpdated, 'PPp')}`}
       >
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           className="gap-2"
           onClick={() => device && exportDevicesCSV([device])}
         >
@@ -110,17 +108,7 @@ const DeviceDetails = forwardRef<HTMLDivElement, object>(function DeviceDetails(
               <StatusIndicator status={device.status} size="lg" />
               <span className="font-medium capitalize">{device.status}</span>
             </div>
-            <Separator orientation="vertical" className="h-6" />
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Wifi className="h-4 w-4" />
-              <span className="font-mono">{device.signalStrength}%</span>
-              <span className="text-xs">Signal</span>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Battery className="h-4 w-4" />
-              <span className="font-mono">{device.batteryLevel}%</span>
-              <span className="text-xs">Battery</span>
-            </div>
+
             {device.location && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
@@ -264,7 +252,7 @@ const DeviceDetails = forwardRef<HTMLDivElement, object>(function DeviceDetails(
               ))}
             </div>
             <div className="mt-4 flex justify-end">
-              <Button 
+              <Button
                 size="sm"
                 onClick={() => {
                   if (device && editedThresholds) {

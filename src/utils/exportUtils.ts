@@ -1,5 +1,5 @@
 // Export utilities for CSV and data download
-import { Device, Alert, HistoricalReading } from '@/types/device';
+import { Device, HistoricalReading } from '@/types/device';
 import { format } from 'date-fns';
 
 // Convert data to CSV string
@@ -56,8 +56,7 @@ export function exportDevicesCSV(devices: Device[]): void {
     device_name: device.name,
     plot_name: device.plotName,
     status: device.status,
-    signal_strength: device.signalStrength,
-    battery_level: device.batteryLevel,
+
     last_updated: device.lastUpdated,
     moisture_percent: device.readings.moisture,
     temperature_celsius: device.readings.temperature,
@@ -76,25 +75,7 @@ export function exportDevicesCSV(devices: Device[]): void {
 }
 
 // Export alerts to CSV
-export function exportAlertsCSV(alerts: Alert[]): void {
-  const data = alerts.map((alert) => ({
-    alert_id: alert.id,
-    device_name: alert.deviceName,
-    plot_name: alert.plotName,
-    parameter: alert.parameter,
-    value: alert.value,
-    threshold: alert.threshold,
-    severity: alert.severity,
-    message: alert.message,
-    timestamp: alert.timestamp,
-    acknowledged: alert.acknowledged ? 'Yes' : 'No',
-    sms_sent: alert.smsSent ? 'Yes' : 'No',
-  }));
 
-  const csv = convertToCSV(data);
-  const timestamp = format(new Date(), 'yyyy-MM-dd_HHmm');
-  downloadFile(csv, `soil_alerts_${timestamp}.csv`);
-}
 
 // Export historical data for devices (requires getDeviceHistory function from context)
 export function exportHistoricalDataCSV(
@@ -108,7 +89,7 @@ export function exportHistoricalDataCSV(
 
   devices.forEach((device) => {
     const history = getDeviceHistory(device.id, hours);
-    
+
     history.forEach((reading) => {
       if (reading.timestamp >= startDate && reading.timestamp <= endDate) {
         allData.push({
@@ -126,7 +107,7 @@ export function exportHistoricalDataCSV(
   });
 
   // Sort by timestamp
-  allData.sort((a, b) => 
+  allData.sort((a, b) =>
     (a.timestamp as Date).getTime() - (b.timestamp as Date).getTime()
   );
 

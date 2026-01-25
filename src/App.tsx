@@ -19,11 +19,12 @@ import NotFound from "./pages/NotFound";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Devices = lazy(() => import("./pages/Devices"));
 const DeviceDetails = lazy(() => import("./pages/DeviceDetails"));
-const Alerts = lazy(() => import("./pages/Alerts"));
+
 const Plots = lazy(() => import("./pages/Plots"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Compare = lazy(() => import("./pages/Compare"));
+const MasterRecords = lazy(() => import("./pages/MasterRecords"));
 
 
 // Loading fallback component
@@ -93,14 +94,7 @@ const App = () => (
                     </Suspense>
                   }
                 />
-                <Route
-                  path="/alerts"
-                  element={
-                    <Suspense fallback={<PageLoader />}>
-                      <Alerts />
-                    </Suspense>
-                  }
-                />
+
                 <Route
                   path="/plots"
                   element={
@@ -114,6 +108,14 @@ const App = () => (
                   element={
                     <Suspense fallback={<PageLoader />}>
                       <Compare />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/master-records"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <MasterRecords />
                     </Suspense>
                   }
                 />

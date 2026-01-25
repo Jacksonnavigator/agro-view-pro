@@ -10,14 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceMap } from '@/components/dashboard/DeviceMap';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
-import { 
-  MapPin, 
-  Cpu, 
-  Droplets, 
-  Thermometer, 
+import {
+  MapPin,
+  Cpu,
+  Droplets,
+  Thermometer,
   ChevronRight,
   CheckCircle,
-  AlertTriangle,
   XCircle,
   LayoutGrid,
   Map
@@ -32,21 +31,20 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
   const plotStats = useMemo(() => plots.map((plot) => {
     const plotDevices = getPlotDevices(plot.id);
     const online = plotDevices.filter((d) => d.status === 'online').length;
-    const warning = plotDevices.filter((d) => d.status === 'warning').length;
     const offline = plotDevices.filter((d) => d.status === 'offline').length;
-    
+
     // Calculate averages safely
-    const avgMoisture = plotDevices.length > 0 
-      ? plotDevices.reduce((sum, d) => sum + d.readings.moisture, 0) / plotDevices.length 
+    const avgMoisture = plotDevices.length > 0
+      ? plotDevices.reduce((sum, d) => sum + d.readings.moisture, 0) / plotDevices.length
       : 0;
-    const avgTemp = plotDevices.length > 0 
-      ? plotDevices.reduce((sum, d) => sum + d.readings.temperature, 0) / plotDevices.length 
+    const avgTemp = plotDevices.length > 0
+      ? plotDevices.reduce((sum, d) => sum + d.readings.temperature, 0) / plotDevices.length
       : 0;
 
     return {
       ...plot,
       devices: plotDevices,
-      stats: { online, warning, offline, total: plotDevices.length },
+      stats: { online, offline, total: plotDevices.length },
       averages: { moisture: avgMoisture, temperature: avgTemp },
     };
   }), [plots, getPlotDevices]);
@@ -89,8 +87,8 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
 
   return (
     <div className="space-y-6 fade-in">
-      <Header 
-        title="Plots & Locations" 
+      <Header
+        title="Plots & Locations"
         subtitle="Manage sensor deployment areas"
       >
         <div className="flex rounded-lg border bg-secondary p-1">
@@ -153,8 +151,8 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
               </div>
               <div>
                 <p className="font-mono text-2xl font-bold">
-                  {devices.length > 0 
-                    ? (devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length).toFixed(1) 
+                  {devices.length > 0
+                    ? (devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length).toFixed(1)
                     : '0.0'}%
                 </p>
                 <p className="text-sm text-muted-foreground">Avg Moisture</p>
@@ -204,15 +202,11 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
                     <span className="font-mono">{plot.stats.total} devices</span>
                   </div>
                   <div className="flex gap-1 h-2">
-                    <div 
+                    <div
                       className="bg-success rounded-l transition-all"
                       style={{ width: `${(plot.stats.online / plot.stats.total) * 100}%` }}
                     />
-                    <div 
-                      className="bg-warning transition-all"
-                      style={{ width: `${(plot.stats.warning / plot.stats.total) * 100}%` }}
-                    />
-                    <div 
+                    <div
                       className="bg-destructive rounded-r transition-all"
                       style={{ width: `${(plot.stats.offline / plot.stats.total) * 100}%` }}
                     />
@@ -222,10 +216,7 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
                       <CheckCircle className="h-3 w-3 text-success" />
                       {plot.stats.online} online
                     </span>
-                    <span className="flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3 text-warning" />
-                      {plot.stats.warning} warning
-                    </span>
+
                     <span className="flex items-center gap-1">
                       <XCircle className="h-3 w-3 text-destructive" />
                       {plot.stats.offline} offline
@@ -246,7 +237,7 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
                   </div>
                   <div className="rounded-lg border p-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Thermometer className="h-4 w-4 text-chart-temperature" />
+                      <Thermometer className="h-4 w-4 text-warning" />
                       <span className="text-xs">Avg Temp</span>
                     </div>
                     <p className="mt-1 font-mono text-lg font-semibold">

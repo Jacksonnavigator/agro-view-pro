@@ -1,18 +1,17 @@
 // Hook to subscribe to Firebase Realtime Database for sensor data
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { database, ref, onValue } from '@/lib/firebase';
-import { Device, Alert, HistoricalReading, SensorThresholds } from '@/types/device';
+import { Device, HistoricalReading, SensorThresholds } from '@/types/device';
 import {
   FirebaseDevicesData,
   fallbackThresholds,
-  generateAlertsFromReadings,
   transformFirebaseData,
   extractAllDeviceHistories,
 } from '@/lib/firebase-data';
 
 export function useFirebaseData() {
   const [devices, setDevices] = useState<Device[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
   const [lastRefresh, setLastRefresh] = useState(new Date());
@@ -75,7 +74,7 @@ export function useFirebaseData() {
                   Array.from(firebaseHistories.entries()).map(([id, h]) => `${id}: ${h.length} readings`)
                 );
 
-                setAlerts(generateAlertsFromReadings(transformedDevices));
+
                 setError(null);
                 setConnectionStatus('connected');
                 retryCountRef.current = 0; // Reset retries on success
@@ -87,7 +86,6 @@ export function useFirebaseData() {
             } else {
               console.log('[useFirebaseData] Firebase snapshot is empty - no devices data');
               setDevices([]);
-              setAlerts([]);
               setConnectionStatus('connected'); // Empty but connected
             }
 
@@ -182,7 +180,6 @@ export function useFirebaseData() {
 
   return {
     devices,
-    alerts,
     isLoading,
     connectionStatus,
     lastRefresh,

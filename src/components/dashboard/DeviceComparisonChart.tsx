@@ -48,7 +48,7 @@ const parameters = [
 const deviceColors = [
   'hsl(142, 70%, 45%)',  // Green
   'hsl(199, 89%, 48%)',  // Blue
-  'hsl(0, 72%, 51%)',    // Red
+  'hsl(35, 92%, 50%)',   // Amber
   'hsl(280, 65%, 60%)',  // Purple
   'hsl(40, 95%, 50%)',   // Orange
   'hsl(180, 70%, 45%)',  // Cyan

@@ -10,9 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Bell,
   Mail,
-  MessageSquare,
   Shield,
   Database,
   Wifi,
@@ -25,16 +23,7 @@ import { SensorThresholds } from '@/types/device';
 import { PlotLocationManager } from '@/components/admin/PlotLocationManager';
 
 interface SettingsState {
-  notifications: {
-    email: boolean;
-    sms: boolean;
-    push: boolean;
-  };
-  smsConfig: {
-    primary: string;
-    secondary: string;
-    criticalOnly: boolean;
-  };
+
   thresholds: SensorThresholds;
   system: {
     refreshInterval: number;
@@ -47,16 +36,7 @@ interface SettingsState {
 }
 
 const defaultSettings: SettingsState = {
-  notifications: {
-    email: true,
-    sms: true,
-    push: false,
-  },
-  smsConfig: {
-    primary: '',
-    secondary: '',
-    criticalOnly: true,
-  },
+
   thresholds: {
     moisture: { min: 30, max: 70 },
     temperature: { min: 15, max: 35 },
@@ -107,19 +87,9 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
     });
   };
 
-  const updateNotification = (key: keyof SettingsState['notifications'], value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      notifications: { ...prev.notifications, [key]: value }
-    }));
-  };
 
-  const updateSmsConfig = (key: keyof SettingsState['smsConfig'], value: string | boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      smsConfig: { ...prev.smsConfig, [key]: value }
-    }));
-  };
+
+
 
   const updateThreshold = (sensor: keyof SensorThresholds, bound: 'min' | 'max', value: string) => {
     const numValue = parseFloat(value);
@@ -157,118 +127,19 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
         subtitle="Configure system preferences and notifications"
       />
 
-      <Tabs defaultValue="notifications" className="space-y-6">
+      <Tabs defaultValue="thresholds" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="thresholds">Thresholds</TabsTrigger>
           <TabsTrigger value="plots">Plot Locations</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
-        {/* Notifications tab */}
-        <TabsContent value="notifications" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Alert Notifications
-              </CardTitle>
-              <CardDescription>
-                Configure how you receive alerts and notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive alerts via email
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notifications.email}
-                  onCheckedChange={(c) => updateNotification('email', c)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">SMS Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Send SMS for critical alerts
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notifications.sms}
-                  onCheckedChange={(c) => updateNotification('sms', c)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Push Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Browser push notifications
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.notifications.push}
-                  onCheckedChange={(c) => updateNotification('push', c)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                SMS Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="sms-primary">Primary Phone Number</Label>
-                  <Input
-                    id="sms-primary"
-                    placeholder="+1 (555) 123-4567"
-                    value={settings.smsConfig.primary}
-                    onChange={(e) => updateSmsConfig('primary', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sms-secondary">Secondary Phone Number</Label>
-                  <Input
-                    id="sms-secondary"
-                    placeholder="+1 (555) 987-6543"
-                    value={settings.smsConfig.secondary}
-                    onChange={(e) => updateSmsConfig('secondary', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Only Critical Alerts</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Only send SMS for critical severity alerts
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.smsConfig.criticalOnly}
-                  onCheckedChange={(c) => updateSmsConfig('criticalOnly', c)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* Thresholds tab */}
         <TabsContent value="thresholds" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Default Alert Thresholds</CardTitle>
+              <CardTitle>Default Sensor Thresholds</CardTitle>
               <CardDescription>
                 Set default threshold values for new devices
               </CardDescription>
@@ -536,7 +407,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
           Save Settings
         </Button>
       </div>
-    </div>
+    </div >
   );
 });
 

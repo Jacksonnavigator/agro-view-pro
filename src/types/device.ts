@@ -1,8 +1,6 @@
 // Device and sensor data types for the IoT soil monitoring system
 
-export type DeviceStatus = 'online' | 'warning' | 'offline';
-
-export type AlertSeverity = 'info' | 'warning' | 'critical';
+export type DeviceStatus = 'online' | 'offline';
 
 export type UserRole = 'admin' | 'viewer';
 
@@ -29,8 +27,7 @@ export interface Device {
   plotName: string;
   plotId: string;
   status: DeviceStatus;
-  signalStrength: number; // 0-100
-  batteryLevel: number;   // 0-100
+
   lastUpdated: Date;
   readings: SensorReading;
   thresholds: SensorThresholds;
@@ -45,20 +42,7 @@ export interface HistoricalReading {
   readings: SensorReading;
 }
 
-export interface Alert {
-  id: string;
-  deviceId: string;
-  deviceName: string;
-  plotName: string;
-  parameter: keyof SensorReading;
-  value: number;
-  threshold: number;
-  severity: AlertSeverity;
-  message: string;
-  timestamp: Date;
-  acknowledged: boolean;
-  smsSent: boolean;
-}
+
 
 export interface Plot {
   id: string;

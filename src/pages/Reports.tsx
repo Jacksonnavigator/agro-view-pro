@@ -15,10 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Download, 
-  FileSpreadsheet, 
-  FileText, 
+import {
+  Download,
+  FileSpreadsheet,
+  FileText,
   Calendar as CalendarIcon,
   BarChart3,
   TrendingUp,
@@ -29,7 +29,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
   exportDevicesCSV,
-  exportAlertsCSV,
   exportHistoricalDataCSV,
   exportDailySummary,
   exportWeeklyReport,
@@ -37,7 +36,7 @@ import {
 } from '@/utils/exportUtils';
 
 const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref) {
-  const { devices, plots, alerts, getDeviceHistory } = useDevices();
+  const { devices, plots, getDeviceHistory } = useDevices();
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -48,7 +47,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
   const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx' | 'pdf'>('csv');
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleQuickExport = async (type: 'daily' | 'weekly' | 'monthly' | 'alerts') => {
+  const handleQuickExport = async (type: 'daily' | 'weekly' | 'monthly') => {
     setIsExporting(true);
     toast({
       title: 'Export Started',
@@ -68,9 +67,6 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
           break;
         case 'monthly':
           exportMonthlyReport(devices, getDeviceHistory);
-          break;
-        case 'alerts':
-          exportAlertsCSV(alerts);
           break;
       }
 
@@ -172,14 +168,14 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
 
   return (
     <div className="space-y-6 fade-in">
-      <Header 
-        title="Reports & Export" 
+      <Header
+        title="Reports & Export"
         subtitle="Generate and download sensor data reports"
       />
 
       {/* Quick export cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card 
+        <Card
           className={cn(
             'cursor-pointer card-hover border-border/50',
             isExporting && 'opacity-50 pointer-events-none'
@@ -199,7 +195,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className={cn(
             'cursor-pointer card-hover border-border/50',
             isExporting && 'opacity-50 pointer-events-none'
@@ -219,7 +215,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className={cn(
             'cursor-pointer card-hover border-border/50',
             isExporting && 'opacity-50 pointer-events-none'
@@ -239,25 +235,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
           </CardContent>
         </Card>
 
-        <Card 
-          className={cn(
-            'cursor-pointer card-hover border-border/50',
-            isExporting && 'opacity-50 pointer-events-none'
-          )}
-          onClick={() => handleQuickExport('alerts')}
-        >
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-warning/10 p-3">
-                <FileText className="h-6 w-6 text-warning" />
-              </div>
-              <div>
-                <p className="font-medium">Alert History</p>
-                <p className="text-sm text-muted-foreground">All alerts log</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
 
       {/* Quick device export */}
@@ -275,7 +253,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
                 </p>
               </div>
             </div>
-            <Button 
+            <Button
               onClick={() => exportDevicesCSV(devices)}
               disabled={isExporting}
               className="gap-2"
@@ -379,26 +357,26 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {filteredDevices.map((device) => (
-                  <div
-                    key={device.id}
-                    className={cn(
-                      'flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors',
-                      selectedDevices.includes(device.id)
-                        ? 'border-primary bg-primary/5'
-                        : 'hover:bg-secondary/50'
-                    )}
-                    onClick={() => toggleDevice(device.id)}
-                  >
-                    <Checkbox
-                      checked={selectedDevices.includes(device.id)}
-                      onCheckedChange={() => toggleDevice(device.id)}
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{device.name}</p>
-                      <p className="text-xs text-muted-foreground">{device.plotName}</p>
-                    </div>
+                <div
+                  key={device.id}
+                  className={cn(
+                    'flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors',
+                    selectedDevices.includes(device.id)
+                      ? 'border-primary bg-primary/5'
+                      : 'hover:bg-secondary/50'
+                  )}
+                  onClick={() => toggleDevice(device.id)}
+                >
+                  <Checkbox
+                    checked={selectedDevices.includes(device.id)}
+                    onCheckedChange={() => toggleDevice(device.id)}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">{device.name}</p>
+                    <p className="text-xs text-muted-foreground">{device.plotName}</p>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -418,8 +396,8 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
               </Select>
             </div>
 
-            <Button 
-              onClick={handleCustomExport} 
+            <Button
+              onClick={handleCustomExport}
               className="gap-2"
               disabled={selectedDevices.length === 0 || isExporting}
             >

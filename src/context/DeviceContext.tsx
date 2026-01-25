@@ -1,12 +1,11 @@
 // Device data context with Firebase Realtime Database integration
 import React, { createContext, useContext, useCallback, ReactNode } from 'react';
-import { Device, Alert, Plot, HistoricalReading, SensorThresholds } from '@/types/device';
+import { Device, Plot, HistoricalReading, SensorThresholds } from '@/types/device';
 import { useFirebaseData } from '@/hooks/useFirebaseData';
 import { useToast } from '@/hooks/use-toast';
 
 interface DeviceContextType {
   devices: Device[];
-  alerts: Alert[];
   plots: Plot[];
   isLoading: boolean;
   connectionStatus: 'connected' | 'connecting' | 'disconnected';
@@ -15,10 +14,7 @@ interface DeviceContextType {
   refreshData: () => void;
   getDevice: (id: string) => Device | undefined;
   getDeviceHistory: (id: string, hours: number) => HistoricalReading[];
-  acknowledgeAlert: (alertId: string) => void;
-  acknowledgeAllAlerts: () => void;
   getPlotDevices: (plotId: string) => Device[];
-  unacknowledgedAlertCount: number;
   updateDeviceThresholds: (deviceId: string, thresholds: SensorThresholds) => void;
 }
 
@@ -62,7 +58,7 @@ const generatePlotsFromDevices = (devices: Device[]): Plot[] => {
       'east-field': { lat: 37.7649, lng: -122.4294 },
       'west-field': { lat: 37.7949, lng: -122.4394 },
     };
-    
+
     plotMap.forEach((plot, plotId) => {
       if (defaultLocations[plotId as keyof typeof defaultLocations]) {
         plot.location = defaultLocations[plotId as keyof typeof defaultLocations];
@@ -76,7 +72,6 @@ const generatePlotsFromDevices = (devices: Device[]): Plot[] => {
 export function DeviceProvider({ children }: { children: ReactNode }) {
   const {
     devices,
-    alerts: firebaseAlerts,
     isLoading,
     connectionStatus,
     error,
@@ -87,15 +82,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   } = useFirebaseData();
 
   const { toast } = useToast();
-  const [acknowledgedAlertIds, setAcknowledgedAlertIds] = React.useState<Set<string>>(new Set());
 
-  // Merge Firebase alerts with acknowledgment state
-  const alerts = React.useMemo(() => {
-    return firebaseAlerts.map((alert) => ({
-      ...alert,
-      acknowledged: acknowledgedAlertIds.has(alert.id) || alert.acknowledged,
-    }));
-  }, [firebaseAlerts, acknowledgedAlertIds]);
 
   // Generate plots from devices
   const plots = React.useMemo(() => generatePlotsFromDevices(devices), [devices]);
@@ -110,20 +97,20 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
     const now = Date.now();
     const cutoff = now - hours * 60 * 60 * 1000;
-    
+
     // Get actual Firebase historical data
     const firebaseHistory = getFirebaseHistory(deviceId, hours);
-    
+
     if (!firebaseHistory || firebaseHistory.length === 0) {
       console.warn(`[DeviceContext] No Firebase data for deviceId=${deviceId}`);
       return [];
     }
-    
+
     // Log all timestamps to see the data range
     const timestamps = firebaseHistory.map(r => r.timestamp.getTime());
     const oldestTimestamp = Math.min(...timestamps);
     const newestTimestamp = Math.max(...timestamps);
-    
+
     console.log(`[DeviceContext.getDeviceHistory] Device: ${deviceId}
       Total points: ${firebaseHistory.length}
       Oldest: ${new Date(oldestTimestamp).toISOString()}
@@ -132,36 +119,23 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       Cutoff: ${new Date(cutoff).toISOString()}
       Now: ${new Date(now).toISOString()}
     `);
-    
+
     // Filter by time range
     const filtered = firebaseHistory.filter(r => r.timestamp.getTime() >= cutoff);
-    
+
     // If no data in range, return all data with a warning
     if (filtered.length === 0) {
       console.warn(`[DeviceContext] No data in requested time range. Showing all ${firebaseHistory.length} points instead.`);
       return firebaseHistory.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     }
-    
+
     const sorted = filtered.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     console.log(`[DeviceContext] Returning ${sorted.length} filtered points`);
-    
+
     return sorted;
   }, [getFirebaseHistory]);
 
-  // Acknowledge an alert
-  const acknowledgeAlert = useCallback((alertId: string) => {
-    setAcknowledgedAlertIds((prev) => new Set([...prev, alertId]));
-  }, []);
 
-  // Acknowledge all alerts
-  const acknowledgeAllAlerts = useCallback(() => {
-    const allIds = alerts.map((a) => a.id);
-    setAcknowledgedAlertIds(new Set(allIds));
-    toast({
-      title: 'All Alerts Acknowledged',
-      description: 'All pending alerts have been marked as acknowledged.',
-    });
-  }, [alerts, toast]);
 
   // Get devices for a specific plot
   const getPlotDevices = useCallback(
@@ -183,14 +157,12 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     [updateThresholds, toast]
   );
 
-  // Count unacknowledged alerts
-  const unacknowledgedAlertCount = alerts.filter((a) => !a.acknowledged).length;
+
 
   return (
     <DeviceContext.Provider
       value={{
         devices,
-        alerts,
         plots,
         isLoading,
         connectionStatus,
@@ -199,10 +171,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
         refreshData,
         getDevice,
         getDeviceHistory,
-        acknowledgeAlert,
-        acknowledgeAllAlerts,
         getPlotDevices,
-        unacknowledgedAlertCount,
         updateDeviceThresholds,
       }}
     >

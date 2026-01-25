@@ -38,7 +38,7 @@ const parameterConfig = {
     dataKey: 'moisture'
   },
   temperature: {
-    color: 'hsl(0, 72%, 51%)',
+    color: 'hsl(45, 93%, 47%)',
     label: 'Temperature',
     unit: '°C',
     dataKey: 'temperature'

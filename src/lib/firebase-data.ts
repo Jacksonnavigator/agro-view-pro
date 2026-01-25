@@ -1,12 +1,11 @@
-import { Alert, Device, SensorReading, SensorThresholds } from '@/types/device';
+import { Device, SensorReading, SensorThresholds } from '@/types/device';
 
 export interface FirebaseReading {
   ec: number;
   moisture: number;
   ph: number;
   temperature: number;
-  signalStrength?: number;  // Optional: from IoT device if available
-  batteryLevel?: number;     // Optional: from IoT device if available
+
 }
 
 export interface FirebasePlotData {
@@ -33,28 +32,18 @@ export const plotConfigs: Record<string, { name: string; description: string }> 
   Plot_2B: { name: 'Plot 2B - Orchard', description: 'Fruit tree area' },
 };
 
-// Determine device status based on readings
+// Determine device status based on last update time (3 minute timeout)
 export const getDeviceStatus = (
-  readings: SensorReading,
-  thresholds: SensorThresholds
+  lastUpdated: Date
 ): Device['status'] => {
-  const issues: string[] = [];
+  const now = new Date();
+  const diffInMinutes = (now.getTime() - lastUpdated.getTime()) / (1000 * 60);
 
-  if (readings.moisture < thresholds.moisture.min || readings.moisture > thresholds.moisture.max) {
-    issues.push('moisture');
-  }
-  if (readings.temperature < thresholds.temperature.min || readings.temperature > thresholds.temperature.max) {
-    issues.push('temperature');
-  }
-  if (readings.ph < thresholds.ph.min || readings.ph > thresholds.ph.max) {
-    issues.push('ph');
-  }
-  if (readings.ec < thresholds.ec.min || readings.ec > thresholds.ec.max) {
-    issues.push('ec');
+  // If data is older than 3 minutes, device is offline
+  if (diffInMinutes > 3) {
+    return 'offline';
   }
 
-  if (issues.length >= 2) return 'offline';
-  if (issues.length === 1) return 'warning';
   return 'online';
 };
 
@@ -72,52 +61,7 @@ export const parseFirebaseTimestamp = (key: string): Date => {
   return new Date();
 };
 
-// Generate alerts from device readings
-export const generateAlertsFromReadings = (devices: Device[]): Alert[] => {
-  const alerts: Alert[] = [];
-  const parameters: (keyof SensorReading)[] = ['moisture', 'temperature', 'ph', 'ec'];
 
-  devices.forEach((device) => {
-    parameters.forEach((param) => {
-      const value = device.readings[param] as number;
-      const threshold = device.thresholds[param as keyof SensorThresholds];
-
-      if (threshold && value !== undefined) {
-        let severity: Alert['severity'] = 'info';
-        let isAlert = false;
-        let isHigh = false;
-
-        if (value > threshold.max) {
-          isAlert = true;
-          isHigh = true;
-          severity = value > threshold.max * 1.2 ? 'critical' : 'warning';
-        } else if (value < threshold.min) {
-          isAlert = true;
-          severity = value < threshold.min * 0.8 ? 'critical' : 'warning';
-        }
-
-        if (isAlert) {
-          alerts.push({
-            id: `alert-${device.id}-${param}-${Date.now()}`,
-            deviceId: device.id,
-            deviceName: device.name,
-            plotName: device.plotName,
-            parameter: param,
-            value,
-            threshold: isHigh ? threshold.max : threshold.min,
-            severity,
-            message: `${param.charAt(0).toUpperCase() + param.slice(1)} is ${isHigh ? 'above' : 'below'} threshold`,
-            timestamp: device.lastUpdated,
-            acknowledged: false,
-            smsSent: severity === 'critical',
-          });
-        }
-      }
-    });
-  });
-
-  return alerts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-};
 
 interface TransformOptions {
   customThresholds: Map<string, SensorThresholds>;
@@ -194,7 +138,8 @@ export const transformFirebaseData = (
         ec: reading.ec ?? 0,
       };
 
-      const status = getDeviceStatus(sensorReading, thresholds);
+      const lastUpdated = parseFirebaseTimestamp(latestTimestamp);
+      const status = getDeviceStatus(lastUpdated);
       const plotConfig = plotConfigs[plotId] || {
         name: plotId.replace(/_/g, ' '),
         description: 'Monitoring zone',
@@ -206,9 +151,8 @@ export const transformFirebaseData = (
         plotName: plotConfig.name,
         plotId: `plot-${plotId}`,
         status,
-        signalStrength: reading.signalStrength ?? 0, // From Firebase or 0
-        batteryLevel: reading.batteryLevel ?? 0, // From Firebase or 0
-        lastUpdated: parseFirebaseTimestamp(latestTimestamp),
+
+        lastUpdated,
         readings: sensorReading,
         thresholds,
         location: {

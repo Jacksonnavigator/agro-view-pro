@@ -20,7 +20,7 @@ interface DeviceMapProps {
 
 function MapLoader({ height }: { height: string }) {
   return (
-    <div 
+    <div
       className="flex items-center justify-center rounded-lg border bg-muted"
       style={{ height }}
     >
@@ -35,7 +35,7 @@ export function DeviceMap({ devices, className, height = '400px', plots }: Devic
 
   if (devicesWithLocation.length === 0 && plotsWithLocation.length === 0) {
     return (
-      <div 
+      <div
         className={cn('flex items-center justify-center rounded-lg border bg-muted', className)}
         style={{ height }}
       >
@@ -45,7 +45,7 @@ export function DeviceMap({ devices, className, height = '400px', plots }: Devic
   }
 
   return (
-    <div className={cn('rounded-lg overflow-hidden border', className)} style={{ height }}>
+    <div className={cn('rounded-2xl overflow-hidden border border-white/10 glass shadow-2xl', className)} style={{ height }}>
       <Suspense fallback={<MapLoader height={height} />}>
         <LeafletMap devices={devices} height={height} plots={plots} />
       </Suspense>

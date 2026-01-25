@@ -1,28 +1,22 @@
 // Dashboard statistics overview component with enhanced visuals
 import { useDevices } from '@/context/DeviceContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Cpu, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Cpu,
+  CheckCircle,
   WifiOff,
-  TrendingUp,
-  Activity,
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function StatsOverview() {
-  const { devices, alerts, unacknowledgedAlertCount } = useDevices();
+  const { devices } = useDevices();
 
   const stats = {
     total: devices.length,
     online: devices.filter((d) => d.status === 'online').length,
-    warning: devices.filter((d) => d.status === 'warning').length,
     offline: devices.filter((d) => d.status === 'offline').length,
-    activeAlerts: unacknowledgedAlertCount,
-    criticalAlerts: alerts.filter((a) => a.severity === 'critical' && !a.acknowledged).length,
   };
 
   const statCards = [
@@ -45,15 +39,6 @@ export function StatsOverview() {
       trend: { value: 2, positive: true },
     },
     {
-      label: 'Warning',
-      value: stats.warning,
-      icon: AlertTriangle,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
-      glowColor: 'group-hover:shadow-[0_0_30px_hsl(38_92%_50%/0.2)]',
-      trend: stats.warning > 0 ? { value: 1, positive: false } : null,
-    },
-    {
       label: 'Offline',
       value: stats.offline,
       icon: WifiOff,
@@ -62,31 +47,13 @@ export function StatsOverview() {
       glowColor: 'group-hover:shadow-[0_0_30px_hsl(0_72%_51%/0.2)]',
       trend: stats.offline > 0 ? { value: stats.offline, positive: false } : null,
     },
-    {
-      label: 'Active Alerts',
-      value: stats.activeAlerts,
-      icon: Activity,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
-      glowColor: 'group-hover:shadow-[0_0_30px_hsl(38_92%_50%/0.2)]',
-      trend: null,
-    },
-    {
-      label: 'Critical',
-      value: stats.criticalAlerts,
-      icon: TrendingUp,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
-      glowColor: 'group-hover:shadow-[0_0_30px_hsl(0_72%_51%/0.2)]',
-      trend: null,
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 stagger-fade">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 stagger-fade">
       {statCards.map((stat) => (
-        <Card 
-          key={stat.label} 
+        <Card
+          key={stat.label}
           className={cn(
             'group border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5',
             stat.glowColor
