@@ -2,15 +2,35 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, query, orderByKey, limitToLast } from "firebase/database";
 
+// Validate that all required environment variables are present
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_DATABASE_URL',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+] as const;
+
+const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName]);
+
+if (missingVars.length > 0) {
+  throw new Error(
+    `Missing required Firebase environment variables: ${missingVars.join(', ')}\n` +
+    'Please create a .env file based on .env.example and add your Firebase credentials.'
+  );
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyBNCtfOzG2Iv8bvCnzpIndVgNQrnxRh2Hc",
-  authDomain: "soilg-c17f2.firebaseapp.com",
-  databaseURL: "https://soilg-c17f2-default-rtdb.firebaseio.com",
-  projectId: "soilg-c17f2",
-  storageBucket: "soilg-c17f2.firebasestorage.app",
-  messagingSenderId: "675059237959",
-  appId: "1:675059237959:web:e6cddb869dba1ba8ed9d62",
-  measurementId: "G-R92HDXKQKS"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
