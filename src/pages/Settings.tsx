@@ -1,6 +1,7 @@
 // Settings page (admin only)
-import { useState, useEffect, forwardRef } from 'react';
+import { useEffect, useState, forwardRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,72 +20,51 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { SensorThresholds } from '@/types/device';
+import { AppSettings, SensorThresholds } from '@/types/device';
 import { PlotLocationManager } from '@/components/admin/PlotLocationManager';
 
-interface SettingsState {
-
-  thresholds: SensorThresholds;
-  system: {
-    refreshInterval: number;
-    retention: number;
-    offlineDetection: boolean;
-  };
-  account: {
-    reportEmail: string;
-  };
-}
-
-const defaultSettings: SettingsState = {
-
-  thresholds: {
-    moisture: { min: 30, max: 70 },
-    temperature: { min: 15, max: 35 },
-    ph: { min: 5.5, max: 7.5 },
-    ec: { min: 0.5, max: 2.5 },
-  },
-  system: {
-    refreshInterval: 30,
-    retention: 90,
-    offlineDetection: true,
-  },
-  account: {
-    reportEmail: '',
-  },
-};
-
 const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, ref) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const { settings, updateSettings } = useDevices();
   const { toast } = useToast();
-  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Load settings from localStorage
   useEffect(() => {
-    const savedSettings = localStorage.getItem('user_settings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        setSettings({ ...defaultSettings, ...parsed });
-      } catch (e) {
-        console.error('Failed to parse settings', e);
-      }
-    } else if (user?.email) {
-      // Initialize report email with user email if not set
-      setSettings(prev => ({
-        ...prev,
-        account: { ...prev.account, reportEmail: user.email }
-      }));
-    }
-    setHasLoaded(true);
-  }, [user]);
+    setDraftSettings(settings);
+  }, [settings]);
 
-  const handleSave = () => {
-    localStorage.setItem('user_settings', JSON.stringify(settings));
-    toast({
-      title: 'Settings Saved',
-      description: 'Your settings have been updated successfully and saved to local storage.',
-    });
+  if (!hasRole('admin')) {
+    return (
+      <div className="space-y-6 fade-in">
+        <Header title="Settings" subtitle="Administrator access required" />
+        <Card>
+          <CardHeader>
+            <CardTitle>Access Restricted</CardTitle>
+            <CardDescription>Only administrators can change system configuration.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateSettings(draftSettings);
+      toast({
+        title: 'Settings Saved',
+        description: 'Configuration has been persisted to Firebase.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Save Failed',
+        description: 'Unable to save settings to Firebase.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
 
@@ -93,7 +73,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
 
   const updateThreshold = (sensor: keyof SensorThresholds, bound: 'min' | 'max', value: string) => {
     const numValue = parseFloat(value);
-    setSettings(prev => ({
+    setDraftSettings(prev => ({
       ...prev,
       thresholds: {
         ...prev.thresholds,
@@ -102,23 +82,19 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
     }));
   };
 
-  const updateSystem = (key: keyof SettingsState['system'], value: number | boolean) => {
-    setSettings(prev => ({
+  const updateSystem = (key: keyof AppSettings['system'], value: number | boolean) => {
+    setDraftSettings(prev => ({
       ...prev,
       system: { ...prev.system, [key]: value }
     }));
   };
 
-  const updateAccount = (key: keyof SettingsState['account'], value: string) => {
-    setSettings(prev => ({
+  const updateAccount = (key: keyof AppSettings['account'], value: string) => {
+    setDraftSettings(prev => ({
       ...prev,
       account: { ...prev.account, [key]: value }
     }));
   };
-
-  if (!hasLoaded) {
-    return null; // Or a loading spinner
-  }
 
   return (
     <div className="space-y-6 fade-in">
@@ -153,7 +129,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <span className="text-xs text-muted-foreground">Min</span>
                       <Input
                         type="number"
-                        value={settings.thresholds.moisture.min}
+                        value={draftSettings.thresholds.moisture.min}
                         onChange={(e) => updateThreshold('moisture', 'min', e.target.value)}
                         className="font-mono"
                       />
@@ -162,7 +138,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <span className="text-xs text-muted-foreground">Max</span>
                       <Input
                         type="number"
-                        value={settings.thresholds.moisture.max}
+                        value={draftSettings.thresholds.moisture.max}
                         onChange={(e) => updateThreshold('moisture', 'max', e.target.value)}
                         className="font-mono"
                       />
@@ -177,7 +153,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <span className="text-xs text-muted-foreground">Min</span>
                       <Input
                         type="number"
-                        value={settings.thresholds.temperature.min}
+                        value={draftSettings.thresholds.temperature.min}
                         onChange={(e) => updateThreshold('temperature', 'min', e.target.value)}
                         className="font-mono"
                       />
@@ -186,7 +162,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <span className="text-xs text-muted-foreground">Max</span>
                       <Input
                         type="number"
-                        value={settings.thresholds.temperature.max}
+                        value={draftSettings.thresholds.temperature.max}
                         onChange={(e) => updateThreshold('temperature', 'max', e.target.value)}
                         className="font-mono"
                       />
@@ -202,7 +178,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <Input
                         type="number"
                         step="0.1"
-                        value={settings.thresholds.ph.min}
+                        value={draftSettings.thresholds.ph.min}
                         onChange={(e) => updateThreshold('ph', 'min', e.target.value)}
                         className="font-mono"
                       />
@@ -212,7 +188,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <Input
                         type="number"
                         step="0.1"
-                        value={settings.thresholds.ph.max}
+                        value={draftSettings.thresholds.ph.max}
                         onChange={(e) => updateThreshold('ph', 'max', e.target.value)}
                         className="font-mono"
                       />
@@ -228,7 +204,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <Input
                         type="number"
                         step="0.1"
-                        value={settings.thresholds.ec.min}
+                        value={draftSettings.thresholds.ec.min}
                         onChange={(e) => updateThreshold('ec', 'min', e.target.value)}
                         className="font-mono"
                       />
@@ -238,7 +214,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                       <Input
                         type="number"
                         step="0.1"
-                        value={settings.thresholds.ec.max}
+                        value={draftSettings.thresholds.ec.max}
                         onChange={(e) => updateThreshold('ec', 'max', e.target.value)}
                         className="font-mono"
                       />
@@ -289,11 +265,24 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                 <div className="flex gap-2 items-center">
                   <Input
                     type="number"
-                    value={settings.system.refreshInterval}
+                  value={draftSettings.system.refreshInterval}
                     onChange={(e) => updateSystem('refreshInterval', parseInt(e.target.value) || 30)}
                     className="w-24 font-mono"
                   />
                   <span className="text-sm text-muted-foreground">seconds</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Mark devices offline after</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draftSettings.system.offlineAfterMinutes}
+                    onChange={(e) => updateSystem('offlineAfterMinutes', parseInt(e.target.value, 10) || 5)}
+                    className="w-24 font-mono"
+                  />
+                  <span className="text-sm text-muted-foreground">minutes without readings</span>
                 </div>
               </div>
             </CardContent>
@@ -312,14 +301,14 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                 <div className="flex gap-2 items-center">
                   <Input
                     type="number"
-                    value={settings.system.retention}
+                  value={draftSettings.system.retention}
                     onChange={(e) => updateSystem('retention', parseInt(e.target.value) || 90)}
                     className="w-24 font-mono"
                   />
                   <span className="text-sm text-muted-foreground">days</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Older data will be archived automatically
+                  Dashboard history queries only request data within this window
                 </p>
               </div>
             </CardContent>
@@ -341,7 +330,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
                   </p>
                 </div>
                 <Switch
-                  checked={settings.system.offlineDetection}
+                  checked={draftSettings.system.offlineDetection}
                   onCheckedChange={(c) => updateSystem('offlineDetection', c)}
                 />
               </div>
@@ -387,7 +376,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
               <div className="space-y-2">
                 <Label>Report Email Address</Label>
                 <Input
-                  value={settings.account.reportEmail}
+                  value={draftSettings.account.reportEmail || user?.email || ''}
                   onChange={(e) => updateAccount('reportEmail', e.target.value)}
                   type="email"
                 />
@@ -402,9 +391,9 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
 
       {/* Save button */}
       <div className="flex justify-end">
-        <Button onClick={handleSave} className="gap-2">
+        <Button onClick={handleSave} disabled={isSaving} className="gap-2">
           <Save className="h-4 w-4" />
-          Save Settings
+          {isSaving ? 'Saving...' : 'Save Settings'}
         </Button>
       </div>
     </div >

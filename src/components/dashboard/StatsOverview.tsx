@@ -5,8 +5,6 @@ import {
   Cpu,
   CheckCircle,
   WifiOff,
-  ArrowUpRight,
-  ArrowDownRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +34,7 @@ export function StatsOverview() {
       color: 'text-success',
       bgColor: 'bg-success/10',
       glowColor: 'group-hover:shadow-[0_0_30px_hsl(145_70%_45%/0.2)]',
-      trend: { value: 2, positive: true },
+      trend: null,
     },
     {
       label: 'Offline',
@@ -45,7 +43,7 @@ export function StatsOverview() {
       color: 'text-destructive',
       bgColor: 'bg-destructive/10',
       glowColor: 'group-hover:shadow-[0_0_30px_hsl(0_72%_51%/0.2)]',
-      trend: stats.offline > 0 ? { value: stats.offline, positive: false } : null,
+      trend: null,
     },
   ];
 
@@ -64,19 +62,6 @@ export function StatsOverview() {
               <div className={cn('rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110', stat.bgColor)}>
                 <stat.icon className={cn('h-4 w-4', stat.color)} />
               </div>
-              {stat.trend && (
-                <div className={cn(
-                  'flex items-center gap-0.5 text-xs font-medium',
-                  stat.trend.positive ? 'text-success' : 'text-destructive'
-                )}>
-                  {stat.trend.positive ? (
-                    <ArrowUpRight className="h-3 w-3" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3" />
-                  )}
-                  {stat.trend.value}
-                </div>
-              )}
             </div>
             <div className="mt-3">
               <p className={cn('font-mono text-3xl font-bold tracking-tight', stat.color)}>

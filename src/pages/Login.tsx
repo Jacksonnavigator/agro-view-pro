@@ -1,4 +1,4 @@
-// Login page with enhanced visuals and mock authentication
+// Login page with Firebase authentication
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ import { Loader2, AlertCircle, Eye, EyeOff, Sparkles, Shield } from 'lucide-reac
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +20,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already authenticated
-  if (isAuthenticated) {
+  if (!isAuthLoading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -34,7 +34,7 @@ export default function Login() {
       if (success) {
         navigate('/dashboard');
       } else {
-        setError('Invalid email or password');
+        setError('Invalid email or password, or this account is not enabled.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -76,7 +76,7 @@ export default function Login() {
               Welcome back
             </CardTitle>
             <CardDescription className="text-center">
-              Sign in to access your dashboard
+              Sign in with your AgroView account
             </CardDescription>
           </CardHeader>
 
@@ -94,7 +94,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@agroview.pro"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -146,26 +146,14 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Demo credentials */}
-            <div className="mt-6 rounded-xl border border-border/30 bg-muted/30 p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                Demo Credentials
-              </p>
-              <div className="space-y-1.5 text-xs font-mono">
-                <p className="text-foreground/80">
-                  Admin: admin@agroview.pro / admin123
-                </p>
-                <p className="text-foreground/80">
-                  Viewer: viewer@agroview.pro / viewer123
-                </p>
-              </div>
-            </div>
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              Access is managed through Firebase Authentication.
+            </p>
           </CardContent>
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          © 2024 AgroView Pro. Enterprise IoT Monitoring Platform.
+          © 2026 AgroView Pro. Enterprise IoT Monitoring Platform.
         </p>
       </div>
     </div>

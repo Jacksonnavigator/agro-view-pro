@@ -77,33 +77,18 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
       deviceHistories[deviceId] = getDeviceHistory(deviceId, currentRange.hours);
     });
 
-    // Merge data by timestamp
-    const firstDevice = selectedDevices[0];
-    if (!deviceHistories[firstDevice]) return [];
+    const buckets = new Map<number, Record<string, number | string>>();
+    selectedDevices.forEach((deviceId) => {
+      deviceHistories[deviceId].forEach((reading) => {
+        const minute = Math.floor(reading.timestamp.getTime() / 60000) * 60000;
+        const dataPoint = buckets.get(minute) || { time: minute };
+        dataPoint[deviceId] = reading.readings[selectedParameter as keyof typeof reading.readings] as number;
+        buckets.set(minute, dataPoint);
+      });
+    });
 
-    const result = deviceHistories[firstDevice]
-      .map((reading, index) => {
-        const dataPoint: Record<string, number | string> = {
-          time: reading.timestamp.getTime(),
-        };
-
-        selectedDevices.forEach((deviceId) => {
-          const deviceReading = deviceHistories[deviceId]?.[index];
-          if (deviceReading) {
-            dataPoint[deviceId] = deviceReading.readings[selectedParameter as keyof typeof deviceReading.readings] as number;
-          }
-        });
-
-        return dataPoint;
-      })
+    return Array.from(buckets.values())
       .sort((a, b) => (a.time as number) - (b.time as number));
-
-    const timeRange = result.length > 0
-      ? `${new Date(result[0].time as number).toLocaleString()} to ${new Date(result[result.length - 1].time as number).toLocaleString()}`
-      : 'no data';
-
-    console.log('[DeviceComparisonChart] chartData length:', result.length, 'range:', currentRange.value, 'timeRange:', timeRange);
-    return result;
   }, [selectedDevices, selectedParameter, currentRange.hours, getDeviceHistory]);
 
   const toggleDevice = (deviceId: string) => {
@@ -181,38 +166,29 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
           <div className="flex h-[300px] items-center justify-center text-muted-foreground">
             Select at least one device to compare
           </div>
+        ) : chartData.length === 0 ? (
+          <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+            No readings in the selected time range
+          </div>
         ) : (
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chartData}
-                margin={{ top: 5, right: 10, left: 0, bottom: 85 }}
+                margin={{ top: 5, right: 16, left: 0, bottom: 36 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
 
                 <XAxis
                   dataKey="time"
                   type="number"
-                  domain={(() => {
-                    if (chartData.length > 0) return ['dataMin', 'dataMax'];
-                    const now = Date.now();
-                    const hoursInMs = currentRange.hours * 60 * 60 * 1000;
-                    return [now - hoursInMs, now];
-                  })()}
-                  ticks={chartData.length > 0 && chartData.length < 50 ? chartData.map(d => d.time as number) : undefined}
+                  domain={['dataMin', 'dataMax']}
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={10}
-                  tickLine={true}
+                  fontSize={11}
+                  tickLine={false}
                   axisLine={false}
-                  height={85}
-                  angle={-45}
-                  textAnchor="end"
-                  dy={10}
-                  tickFormatter={(value) => {
-                    return format(new Date(value), 'MMM d, HH:mm:ss');
-                  }}
-                  minTickGap={0}
-                  interval={0}
+                  tickFormatter={(value) => format(new Date(value), currentRange.value === '1h' ? 'HH:mm' : 'MMM d HH:mm')}
+                  minTickGap={40}
                 />
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"
@@ -258,7 +234,7 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
                       name={device?.name || deviceId}
                       stroke={deviceColors[devices.findIndex((d) => d.id === deviceId) % deviceColors.length]}
                       strokeWidth={2}
-                      dot={{ r: 3, strokeWidth: 1 }}
+                      dot={chartData.length <= 40 ? { r: 2, strokeWidth: 1 } : false}
                       activeDot={{ r: 4, strokeWidth: 0 }}
                     />
                   );

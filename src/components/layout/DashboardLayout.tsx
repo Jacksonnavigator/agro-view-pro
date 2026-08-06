@@ -4,15 +4,30 @@ import { useAuth } from '@/context/AuthContext';
 import { DeviceProvider } from '@/context/DeviceContext';
 import { Sidebar } from './Sidebar';
 import { useState } from 'react';
-import { Menu, User, Bell } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 export function DashboardLayout() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Redirect to login if not authenticated
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="w-full max-w-md space-y-4 p-6">
+          <Skeleton className="h-10 w-56" />
+          <Skeleton className="h-4 w-80" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -22,7 +37,7 @@ export function DashboardLayout() {
       <div className="flex flex-col lg:flex-row h-screen w-screen overflow-hidden bg-background">
         {/* Desktop Sidebar (Fixed) */}
         <div className="hidden lg:block h-full">
-          <Sidebar />
+          <Sidebar collapsed={isSidebarCollapsed} onCollapsedChange={setIsSidebarCollapsed} />
         </div>
 
         {/* Mobile Header */}
@@ -52,7 +67,12 @@ export function DashboardLayout() {
         </header>
 
         {/* Main content area */}
-        <main className="flex-1 h-full overflow-y-auto transition-all duration-300 scroll-smooth">
+        <main
+          className={cn(
+            'flex-1 h-full overflow-y-auto transition-[padding] duration-300 scroll-smooth',
+            isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+          )}
+        >
           <div className="container px-4 py-6 md:px-6 lg:py-8 max-w-7xl mx-auto pb-24 lg:pb-8">
             <Outlet />
           </div>

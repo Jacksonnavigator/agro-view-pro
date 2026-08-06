@@ -1,4 +1,4 @@
-import { Device, SensorReading, SensorThresholds } from '@/types/device';
+import { AppSettings, Device, SensorReading, SensorThresholds } from '@/types/device';
 
 export interface FirebaseReading {
   ec: number;
@@ -24,6 +24,20 @@ export const fallbackThresholds: SensorThresholds = {
   ec: { min: 0.5, max: 2.5 },
 };
 
+export const fallbackSettings: AppSettings = {
+  thresholds: fallbackThresholds,
+  system: {
+    refreshInterval: 30,
+    retention: 30,
+    offlineDetection: true,
+    offlineAfterMinutes: 5,
+  },
+  account: {
+    reportEmail: '',
+  },
+  plotLocations: {},
+};
+
 // Plot configurations mapping Firebase plot IDs to friendly names
 export const plotConfigs: Record<string, { name: string; description: string }> = {
   Plot_1A: { name: 'Plot 1A - North Field', description: 'Primary monitoring zone' },
@@ -32,15 +46,20 @@ export const plotConfigs: Record<string, { name: string; description: string }> 
   Plot_2B: { name: 'Plot 2B - Orchard', description: 'Fruit tree area' },
 };
 
-// Determine device status based on last update time (3 minute timeout)
+// Determine device status based on latest sensor timestamp.
 export const getDeviceStatus = (
-  lastUpdated: Date
+  lastUpdated: Date,
+  offlineAfterMinutes = fallbackSettings.system.offlineAfterMinutes,
+  offlineDetection = true
 ): Device['status'] => {
+  if (!offlineDetection) {
+    return 'online';
+  }
+
   const now = new Date();
   const diffInMinutes = (now.getTime() - lastUpdated.getTime()) / (1000 * 60);
 
-  // If data is older than 3 minutes, device is offline
-  if (diffInMinutes > 3) {
+  if (diffInMinutes > offlineAfterMinutes) {
     return 'offline';
   }
 
@@ -66,6 +85,9 @@ export const parseFirebaseTimestamp = (key: string): Date => {
 interface TransformOptions {
   customThresholds: Map<string, SensorThresholds>;
   defaultThresholds: SensorThresholds;
+  plotLocations?: Record<string, { lat: number; lng: number }>;
+  offlineAfterMinutes?: number;
+  offlineDetection?: boolean;
 }
 
 // Extract all historical readings from Firebase data for a specific plot
@@ -97,18 +119,10 @@ export const extractAllDeviceHistories = (
 ): Map<string, { timestamp: Date; readings: SensorReading }[]> => {
   const historyMap = new Map<string, { timestamp: Date; readings: SensorReading }[]>();
 
-  console.log('[extractAllDeviceHistories] Processing Firebase data for', Object.keys(data).length, 'plots');
-
   Object.entries(data).forEach(([plotId, plotData]) => {
     const deviceId = `device-${plotId}`;
     const history = extractHistoricalReadings(plotData);
     historyMap.set(deviceId, history);
-
-    const timeRange = history.length > 0
-      ? `${history[0].timestamp.toLocaleString()} to ${history[history.length - 1].timestamp.toLocaleString()}`
-      : 'no data';
-
-    console.log(`[extractAllDeviceHistories] ${deviceId}: ${history.length} readings, ${timeRange}`);
   });
 
   return historyMap;
@@ -116,10 +130,15 @@ export const extractAllDeviceHistories = (
 
 export const transformFirebaseData = (
   data: FirebaseDevicesData,
-  { customThresholds, defaultThresholds }: TransformOptions
+  {
+    customThresholds,
+    defaultThresholds,
+    plotLocations = {},
+    offlineAfterMinutes,
+    offlineDetection,
+  }: TransformOptions
 ): Device[] => {
   const devicesList: Device[] = [];
-  let deviceIndex = 0;
 
   Object.entries(data).forEach(([plotId, plotData]) => {
     // Get the latest reading for this plot
@@ -139,29 +158,24 @@ export const transformFirebaseData = (
       };
 
       const lastUpdated = parseFirebaseTimestamp(latestTimestamp);
-      const status = getDeviceStatus(lastUpdated);
+      const status = getDeviceStatus(lastUpdated, offlineAfterMinutes, offlineDetection);
       const plotConfig = plotConfigs[plotId] || {
         name: plotId.replace(/_/g, ' '),
         description: 'Monitoring zone',
       };
+      const devicePlotId = `plot-${plotId}`;
 
       devicesList.push({
         id: deviceId,
         name: `Sensor ${plotId.replace(/_/g, '-')}`,
         plotName: plotConfig.name,
-        plotId: `plot-${plotId}`,
+        plotId: devicePlotId,
         status,
-
         lastUpdated,
         readings: sensorReading,
         thresholds,
-        location: {
-          lat: 40.7128 + deviceIndex * 0.01,
-          lng: -74.006 + deviceIndex * 0.01,
-        },
+        location: plotLocations[devicePlotId] || plotLocations[plotId],
       });
-
-      deviceIndex++;
     }
   });
 

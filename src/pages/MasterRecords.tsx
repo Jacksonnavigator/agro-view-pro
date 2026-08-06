@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import { HistoricalReading } from '@/types/device';
 import { Download, Database, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { exportDevicesCSV } from '@/utils/exportUtils';
+import { exportHistoricalDataCSV } from '@/utils/exportUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(_props, ref) {
@@ -60,7 +60,12 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
                         variant="outline"
                         size="sm"
                         className="gap-2 border-white/5 bg-white/5 hover:bg-white/10"
-                        onClick={() => exportDevicesCSV(devices)}
+                        onClick={() => exportHistoricalDataCSV(
+                            devices,
+                            new Date(Date.now() - hours * 60 * 60 * 1000),
+                            new Date(),
+                            getDeviceHistory
+                        )}
                     >
                         <Download className="h-4 w-4" />
                         <span className="hidden sm:inline">Export Log</span>

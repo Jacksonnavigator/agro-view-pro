@@ -1,7 +1,6 @@
 // Main navigation sidebar component with enhanced styling
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useDevices } from '@/context/DeviceContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +20,8 @@ import { useState } from 'react';
 
 interface SidebarProps {
   onNavigate?: () => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 const navItems = [
@@ -34,11 +35,18 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
-export function Sidebar({ onNavigate }: SidebarProps) {
+export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
   const { user, logout, hasRole } = useAuth();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setInternalCollapsed(next);
+    onCollapsedChange?.(next);
+  };
 
   return (
     <aside
@@ -67,7 +75,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           variant="ghost"
           size="sm"
           className="hidden lg:flex h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent/80"
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggleCollapsed}
         >
           {collapsed ? <Menu className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>

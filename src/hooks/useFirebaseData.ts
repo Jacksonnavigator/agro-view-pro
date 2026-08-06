@@ -1,182 +1,269 @@
-// Hook to subscribe to Firebase Realtime Database for sensor data
+// Hook to subscribe to Firebase Realtime Database for recent sensor data only.
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { database, ref, onValue } from '@/lib/firebase';
-import { Device, HistoricalReading, SensorThresholds } from '@/types/device';
+import { auth, database, ref, onValue, set, query, orderByKey, startAt, limitToLast } from '@/lib/firebase';
+import { AppSettings, Device, HistoricalReading, SensorThresholds } from '@/types/device';
 import {
-  FirebaseDevicesData,
-  fallbackThresholds,
+  FirebasePlotData,
+  fallbackSettings,
   transformFirebaseData,
-  extractAllDeviceHistories,
+  extractHistoricalReadings,
 } from '@/lib/firebase-data';
+
+const HISTORY_POINT_LIMIT = 5000;
+
+function toFirebaseTimestampKey(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds()),
+  ].join('-');
+}
+
+function mergeSettings(value: Partial<AppSettings> | null | undefined): AppSettings {
+  return {
+    ...fallbackSettings,
+    ...value,
+    thresholds: {
+      ...fallbackSettings.thresholds,
+      ...value?.thresholds,
+    },
+    system: {
+      ...fallbackSettings.system,
+      ...value?.system,
+    },
+    account: {
+      ...fallbackSettings.account,
+      ...value?.account,
+    },
+    plotLocations: {
+      ...fallbackSettings.plotLocations,
+      ...value?.plotLocations,
+    },
+  };
+}
+
+async function fetchPlotIds(): Promise<string[]> {
+  const databaseUrl = import.meta.env.VITE_FIREBASE_DATABASE_URL as string | undefined;
+  if (!databaseUrl) {
+    throw new Error('Missing VITE_FIREBASE_DATABASE_URL');
+  }
+
+  const token = await auth.currentUser?.getIdToken();
+  const url = new URL(`${databaseUrl.replace(/\/$/, '')}/devices.json`);
+  url.searchParams.set('shallow', 'true');
+  if (token) {
+    url.searchParams.set('auth', token);
+  }
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`Unable to load device registry (${response.status})`);
+  }
+
+  const keys = (await response.json()) as Record<string, true> | null;
+  return Object.keys(keys || {});
+}
 
 export function useFirebaseData() {
   const [devices, setDevices] = useState<Device[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettingsState] = useState<AppSettings>(fallbackSettings);
   const [customThresholds, setCustomThresholds] = useState<Map<string, SensorThresholds>>(new Map());
   const [deviceHistoryMap, setDeviceHistoryMap] = useState<Map<string, HistoricalReading[]>>(new Map());
-  const retryCountRef = useRef(0);
-  const maxRetries = 3;
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const unsubscribersRef = useRef<Array<() => void>>([]);
 
-  // Retrieve global default thresholds from localStorage or use fallback
-  const defaultThresholds = useMemo(() => {
-    const saved = localStorage.getItem('user_settings');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.thresholds) {
-          return parsed.thresholds as SensorThresholds;
-        }
-      } catch (e) {
-        console.error('Failed to parse settings for thresholds', e);
-      }
-    }
-    return fallbackThresholds;
-  }, [lastRefresh]); // Re-read when refresh happens
+  const thresholdDefaults = settings.thresholds;
 
-  // Transform Firebase data to Device array
-  const transformFirebaseDataCallback = useCallback(
-    (data: FirebaseDevicesData): Device[] =>
-      transformFirebaseData(data, { customThresholds, defaultThresholds }),
-    [customThresholds, defaultThresholds]
+  const transformOptions = useMemo(
+    () => ({
+      customThresholds,
+      defaultThresholds: thresholdDefaults,
+      plotLocations: settings.plotLocations,
+      offlineAfterMinutes: settings.system.offlineAfterMinutes,
+      offlineDetection: settings.system.offlineDetection,
+    }),
+    [customThresholds, thresholdDefaults, settings.plotLocations, settings.system.offlineAfterMinutes, settings.system.offlineDetection]
   );
 
-  // Subscribe to Firebase Realtime Database
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    const devicesRef = ref(database, 'devices');
+    return onValue(
+      ref(database, 'settings/global'),
+      (snapshot) => {
+        const value = snapshot.exists() ? snapshot.val() as Partial<AppSettings> : null;
+        setSettingsState(mergeSettings(value));
+      },
+      (err) => {
+        console.error('Failed to load settings:', err);
+        setError(`Settings error: ${err.message}`);
+      }
+    );
+  }, []);
 
-    const connectToFirebase = () => {
-      setIsLoading(true);
-      setConnectionStatus('connecting');
-      setError(null);
+  useEffect(() => {
+    return onValue(
+      ref(database, 'settings/deviceThresholds'),
+      (snapshot) => {
+        const values = snapshot.exists() ? snapshot.val() as Record<string, SensorThresholds> : {};
+        setCustomThresholds(new Map(Object.entries(values)));
+      },
+      (err) => {
+        console.error('Failed to load device thresholds:', err);
+      }
+    );
+  }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    unsubscribersRef.current.forEach((unsubscribe) => unsubscribe());
+    unsubscribersRef.current = [];
+    setIsLoading(true);
+    setConnectionStatus('connecting');
+    setError(null);
+
+    const latestByPlot = new Map<string, FirebasePlotData>();
+    const historiesByDevice = new Map<string, HistoricalReading[]>();
+
+    const rebuildDevices = () => {
+      const firebaseData: Record<string, FirebasePlotData> = {};
+      latestByPlot.forEach((plotData, plotId) => {
+        firebaseData[plotId] = plotData;
+      });
+
+      setDevices(transformFirebaseData(firebaseData, transformOptions));
+      setDeviceHistoryMap(new Map(historiesByDevice));
+      setLastRefresh(new Date());
+    };
+
+    const subscribe = async () => {
       try {
-        unsubscribe = onValue(
-          devicesRef,
-          (snapshot) => {
-            if (snapshot.exists()) {
-              const data = snapshot.val() as FirebaseDevicesData;
-              try {
-                const transformedDevices = transformFirebaseDataCallback(data);
-                setDevices(transformedDevices);
+        const plotIds = await fetchPlotIds();
+        if (cancelled) return;
 
-                // Extract actual historical data from Firebase instead of generating fake data
-                const firebaseHistories = extractAllDeviceHistories(data);
-                setDeviceHistoryMap(firebaseHistories);
+        if (plotIds.length === 0) {
+          setDevices([]);
+          setDeviceHistoryMap(new Map());
+          setConnectionStatus('connected');
+          setIsLoading(false);
+          setLastRefresh(new Date());
+          return;
+        }
 
-                console.log('[useFirebaseData] Firebase snapshot received. Devices:', transformedDevices.length, 'History map size:', firebaseHistories.size);
+        const retentionHours = Math.max(settings.system.retention, 1) * 24;
+        const cutoff = new Date(Date.now() - retentionHours * 60 * 60 * 1000);
+        const cutoffKey = toFirebaseTimestampKey(cutoff);
+        let completedInitialSnapshots = 0;
+        const expectedInitialSnapshots = plotIds.length * 2;
 
-                console.log('[useFirebaseData] Loaded actual Firebase historical data:',
-                  Array.from(firebaseHistories.entries()).map(([id, h]) => `${id}: ${h.length} readings`)
-                );
-
-
-                setError(null);
-                setConnectionStatus('connected');
-                retryCountRef.current = 0; // Reset retries on success
-              } catch (transformErr) {
-                console.error('Error transforming data:', transformErr);
-                setError('Failed to process sensor data');
-                // Don't disconnect, just show error
-              }
-            } else {
-              console.log('[useFirebaseData] Firebase snapshot is empty - no devices data');
-              setDevices([]);
-              setConnectionStatus('connected'); // Empty but connected
-            }
-
-            setLastRefresh(new Date());
+        const markInitialSnapshot = () => {
+          completedInitialSnapshots += 1;
+          if (completedInitialSnapshots >= expectedInitialSnapshots) {
+            setConnectionStatus('connected');
             setIsLoading(false);
-          },
-          (err) => {
-            console.error('Firebase error:', err);
-            setError(`Connection error: ${err.message}`);
-            setConnectionStatus('disconnected');
-            setIsLoading(false);
-
-            // Auto-retry logic
-            if (retryCountRef.current < maxRetries) {
-              retryCountRef.current += 1;
-              const timeout = Math.pow(2, retryCountRef.current) * 1000; // Exponential backoff
-              console.log(`Retrying connection in ${timeout}ms...`);
-              setTimeout(connectToFirebase, timeout);
-            }
           }
-        );
-      } catch (e) {
-        console.error('Setup error:', e);
-        setError('Failed to initialize connection');
+        };
+
+        plotIds.forEach((plotId) => {
+          const latestQuery = query(ref(database, `devices/${plotId}`), orderByKey(), limitToLast(1));
+          const latestUnsubscribe = onValue(
+            latestQuery,
+            (snapshot) => {
+              latestByPlot.set(plotId, snapshot.exists() ? snapshot.val() as FirebasePlotData : {});
+              rebuildDevices();
+              markInitialSnapshot();
+            },
+            (err) => {
+              console.error(`Firebase latest-reading error for ${plotId}:`, err);
+              setError(`Connection error: ${err.message}`);
+              setConnectionStatus('disconnected');
+              setIsLoading(false);
+            }
+          );
+
+          const historyQuery = query(
+            ref(database, `devices/${plotId}`),
+            orderByKey(),
+            startAt(cutoffKey),
+            limitToLast(HISTORY_POINT_LIMIT)
+          );
+          const historyUnsubscribe = onValue(
+            historyQuery,
+            (snapshot) => {
+              const deviceId = `device-${plotId}`;
+              historiesByDevice.set(
+                deviceId,
+                snapshot.exists() ? extractHistoricalReadings(snapshot.val() as FirebasePlotData) : []
+              );
+              rebuildDevices();
+              markInitialSnapshot();
+            },
+            (err) => {
+              console.error(`Firebase history error for ${plotId}:`, err);
+              setError(`Connection error: ${err.message}`);
+              setConnectionStatus('disconnected');
+              setIsLoading(false);
+            }
+          );
+
+          unsubscribersRef.current.push(latestUnsubscribe, historyUnsubscribe);
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to initialize Firebase subscriptions';
+        console.error(message);
+        setError(message);
         setConnectionStatus('disconnected');
         setIsLoading(false);
       }
     };
 
-    connectToFirebase();
+    void subscribe();
 
     return () => {
-      if (unsubscribe) unsubscribe();
-      // Also ensure we clean up the listener reference if off is needed explicitly
-      // off(devicesRef); // onValue returns unsubscribe which handles this
+      cancelled = true;
+      unsubscribersRef.current.forEach((unsubscribe) => unsubscribe());
+      unsubscribersRef.current = [];
     };
-  }, [transformFirebaseDataCallback]);
+  }, [settings.system.retention, transformOptions, refreshNonce]);
 
-  // Get historical data for a device from actual Firebase data
   const getDeviceHistory = useCallback((deviceId: string, hours: number): HistoricalReading[] => {
-    // Get actual Firebase historical data
-    const firebaseHistory = deviceHistoryMap.get(deviceId);
-
-    if (firebaseHistory && firebaseHistory.length > 0) {
-      // Find the latest timestamp in the data
-      // We sort first to find the true end time
-      // This enables "Relative Time" filtering - showing the last X hours of DATA, not WALL CLOCK time
-      // This addresses the user's need to see "not only for today" but data "as sorted"
-      const allSorted = [...firebaseHistory].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-      const latestDataTime = allSorted[allSorted.length - 1].timestamp.getTime();
-      const cutoff = latestDataTime - hours * 60 * 60 * 1000;
-
-      // Filter relative to the latest data point
-      const filtered = allSorted.filter(r => r.timestamp.getTime() >= cutoff);
-
-      const timeRangeInfo = filtered.length > 0
-        ? `from ${filtered[0].timestamp.toLocaleString()} to ${filtered[filtered.length - 1].timestamp.toLocaleString()}`
-        : 'no data in relative range';
-
-      console.log(`[getDeviceHistory] deviceId=${deviceId} hours=${hours} (relative to data) filtered=${filtered.length} (total=${firebaseHistory.length}) ${timeRangeInfo}`);
-      return filtered;
-    }
-
-    console.log(`[getDeviceHistory] deviceId=${deviceId} - no Firebase data available in deviceHistoryMap`);
-    return [];
+    const history = deviceHistoryMap.get(deviceId) || [];
+    const cutoff = Date.now() - hours * 60 * 60 * 1000;
+    return history
+      .filter((reading) => reading.timestamp.getTime() >= cutoff)
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }, [deviceHistoryMap]);
 
-  // Update device thresholds
-  const updateDeviceThresholds = useCallback((deviceId: string, thresholds: SensorThresholds) => {
-    setCustomThresholds(prev => {
-      const newMap = new Map(prev);
-      newMap.set(deviceId, thresholds);
-      return newMap;
+  const updateDeviceThresholds = useCallback(async (deviceId: string, thresholds: SensorThresholds) => {
+    setCustomThresholds((prev) => {
+      const next = new Map(prev);
+      next.set(deviceId, thresholds);
+      return next;
     });
+    await set(ref(database, `settings/deviceThresholds/${deviceId}`), thresholds);
   }, []);
 
-  // Manual refresh (forces re-fetch)
+  const updateSettings = useCallback(async (nextSettings: AppSettings) => {
+    const merged = mergeSettings(nextSettings);
+    await set(ref(database, 'settings/global'), merged);
+    setSettingsState(merged);
+  }, []);
+
+  const updatePlotLocations = useCallback(async (plotLocations: AppSettings['plotLocations']) => {
+    const nextSettings = { ...settings, plotLocations };
+    await updateSettings(nextSettings);
+  }, [settings, updateSettings]);
+
   const refreshData = useCallback(() => {
-    setIsLoading(true);
-    // In a real scenario, this might force a re-fetch if we weren't using real-time subscription
-    // But here it triggers a re-read of localStorage due to dependency in defaultThresholds
-    // And we can simulate a "reconnect" if we were disconnected
-    if (connectionStatus === 'disconnected') {
-      retryCountRef.current = 0;
-      // The effect dependency on connectionStatus or a manual trigger would be needed
-      // For now, we just update lastRefresh which might trigger things depending on implementation
-    }
     setLastRefresh(new Date());
-    setTimeout(() => setIsLoading(false), 500); // Fake delay for UX
-  }, [connectionStatus]);
+    setRefreshNonce((value) => value + 1);
+  }, []);
 
   return {
     devices,
@@ -184,8 +271,11 @@ export function useFirebaseData() {
     connectionStatus,
     lastRefresh,
     error,
+    settings,
     refreshData,
     getDeviceHistory,
     updateDeviceThresholds,
+    updateSettings,
+    updatePlotLocations,
   };
 }

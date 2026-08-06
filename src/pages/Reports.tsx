@@ -18,7 +18,6 @@ import {
 import {
   Download,
   FileSpreadsheet,
-  FileText,
   Calendar as CalendarIcon,
   BarChart3,
   TrendingUp,
@@ -36,7 +35,7 @@ import {
 } from '@/utils/exportUtils';
 
 const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref) {
-  const { devices, plots, getDeviceHistory } = useDevices();
+  const { devices, plots, getDeviceHistory, isLoading } = useDevices();
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -44,7 +43,6 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
   });
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<string>('all');
-  const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx' | 'pdf'>('csv');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleQuickExport = async (type: 'daily' | 'weekly' | 'monthly') => {
@@ -111,16 +109,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
     try {
       const selectedDeviceData = devices.filter((d) => selectedDevices.includes(d.id));
 
-      if (exportFormat === 'csv') {
-        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to, getDeviceHistory);
-      } else {
-        // For xlsx and pdf, we'll use CSV as fallback with a message
-        exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to, getDeviceHistory);
-        toast({
-          title: 'Note',
-          description: `${exportFormat.toUpperCase()} format is exported as CSV. Full ${exportFormat.toUpperCase()} support coming soon!`,
-        });
-      }
+      exportHistoricalDataCSV(selectedDeviceData, dateRange.from, dateRange.to, getDeviceHistory);
 
       toast({
         title: 'Export Complete',
@@ -154,7 +143,9 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
     const filteredDevices = devices.filter(
       (d) => selectedPlot === 'all' || d.plotId === selectedPlot
     );
-    if (selectedDevices.length === filteredDevices.length) {
+    if (filteredDevices.length === 0) {
+      setSelectedDevices([]);
+    } else if (selectedDevices.length === filteredDevices.length) {
       setSelectedDevices([]);
     } else {
       setSelectedDevices(filteredDevices.map((d) => d.id));
@@ -178,7 +169,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
         <Card
           className={cn(
             'cursor-pointer card-hover border-border/50',
-            isExporting && 'opacity-50 pointer-events-none'
+            (isExporting || isLoading) && 'opacity-50 pointer-events-none'
           )}
           onClick={() => handleQuickExport('daily')}
         >
@@ -198,7 +189,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
         <Card
           className={cn(
             'cursor-pointer card-hover border-border/50',
-            isExporting && 'opacity-50 pointer-events-none'
+            (isExporting || isLoading) && 'opacity-50 pointer-events-none'
           )}
           onClick={() => handleQuickExport('weekly')}
         >
@@ -218,7 +209,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
         <Card
           className={cn(
             'cursor-pointer card-hover border-border/50',
-            isExporting && 'opacity-50 pointer-events-none'
+            (isExporting || isLoading) && 'opacity-50 pointer-events-none'
           )}
           onClick={() => handleQuickExport('monthly')}
         >
@@ -249,13 +240,13 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
               <div>
                 <p className="font-medium">Export Current Device Status</p>
                 <p className="text-sm text-muted-foreground">
-                  Download current readings for all {devices.length} devices
+                  {isLoading ? 'Loading current readings...' : `Download current readings for all ${devices.length} devices`}
                 </p>
               </div>
             </div>
             <Button
               onClick={() => exportDevicesCSV(devices)}
-              disabled={isExporting}
+              disabled={isExporting || isLoading || devices.length === 0}
               className="gap-2"
             >
               <Download className="h-4 w-4" />
@@ -352,7 +343,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
             <div className="flex items-center justify-between">
               <Label>Select Devices ({selectedDevices.length} selected)</Label>
               <Button variant="ghost" size="sm" onClick={selectAllDevices}>
-                {selectedDevices.length === filteredDevices.length ? 'Deselect All' : 'Select All'}
+                {filteredDevices.length > 0 && selectedDevices.length === filteredDevices.length ? 'Deselect All' : 'Select All'}
               </Button>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -380,20 +371,11 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
             </div>
           </div>
 
-          {/* Export format and action */}
+              {/* Export action */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between pt-4 border-t">
             <div className="space-y-2">
               <Label>Export Format</Label>
-              <Select value={exportFormat} onValueChange={(v: 'csv' | 'xlsx' | 'pdf') => setExportFormat(v)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="csv">CSV (.csv)</SelectItem>
-                  <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
-                  <SelectItem value="pdf">PDF Report</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-sm text-muted-foreground">CSV (.csv)</p>
             </div>
 
             <Button

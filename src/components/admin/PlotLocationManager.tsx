@@ -1,5 +1,5 @@
 // Plot Location Manager for admin to set plot locations
-import { useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ interface PlotLocationData {
 }
 
 export function PlotLocationManager() {
-  const { plots, devices, getPlotDevices } = useDevices();
+  const { plots, devices, getPlotDevices, settings, updatePlotLocations } = useDevices();
   const { toast } = useToast();
   const [selectedPlotId, setSelectedPlotId] = useState<string>('');
   const [plotLocations, setPlotLocations] = useState<Record<string, { lat: number; lng: number }>>({});
@@ -34,17 +34,9 @@ export function PlotLocationManager() {
   const [manualLng, setManualLng] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load saved plot locations from localStorage
-  useState(() => {
-    const saved = localStorage.getItem('plot_locations');
-    if (saved) {
-      try {
-        setPlotLocations(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load plot locations:', e);
-      }
-    }
-  });
+  useEffect(() => {
+    setPlotLocations(settings.plotLocations);
+  }, [settings.plotLocations]);
 
   const selectedPlot = useMemo(() => 
     plots.find(p => p.id === selectedPlotId), 
@@ -125,11 +117,8 @@ export function PlotLocationManager() {
   const handleSaveAll = useCallback(async () => {
     setIsSaving(true);
     try {
-      localStorage.setItem('plot_locations', JSON.stringify(plotLocations));
-      
-      // In a real app, this would save to backend
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await updatePlotLocations(plotLocations);
+
       toast({
         title: 'Locations Saved',
         description: `Successfully saved locations for ${Object.keys(plotLocations).length} plots.`,
@@ -143,7 +132,7 @@ export function PlotLocationManager() {
     } finally {
       setIsSaving(false);
     }
-  }, [plotLocations, toast]);
+  }, [plotLocations, toast, updatePlotLocations]);
 
   // Get current location (geolocation)
   const handleGetCurrentLocation = useCallback(() => {

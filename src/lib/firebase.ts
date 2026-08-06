@@ -1,6 +1,17 @@
 // Firebase configuration and initialization for IoT soil monitoring
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, query, orderByKey, limitToLast } from "firebase/database";
+import { getAuth } from "firebase/auth";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  get,
+  set,
+  query,
+  orderByKey,
+  startAt,
+  limitToLast,
+} from "firebase/database";
 
 // Validate that all required environment variables are present
 const requiredEnvVars = [
@@ -35,7 +46,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const database = getDatabase(app);
 
-export { database, ref, onValue, query, orderByKey, limitToLast };
+export { auth, database, ref, onValue, get, set, query, orderByKey, startAt, limitToLast };
 export default app;

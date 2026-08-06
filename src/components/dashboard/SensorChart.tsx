@@ -78,13 +78,8 @@ export function SensorChart({
       }))
       .sort((a, b) => a.time - b.time);
 
-    const timeRange = mapped.length > 0
-      ? `${new Date(mapped[0].time).toLocaleString()} to ${new Date(mapped[mapped.length - 1].time).toLocaleString()}`
-      : 'no data';
-
-    console.log('[SensorChart] chartData length:', mapped.length, 'selectedRange:', selectedRange, 'timeRange:', timeRange);
     return mapped;
-  }, [data, selectedRange]);
+  }, [data]);
 
   const toggleParameter = (param: string) => {
     setVisibleParams((prev) => {
@@ -99,7 +94,6 @@ export function SensorChart({
   };
 
   const handleRangeChange = (range: TimeRange) => {
-    console.log('[SensorChart] handleRangeChange', range);
     setSelectedRange(range.value);
     onTimeRangeChange?.(range);
   };
@@ -161,87 +155,79 @@ export function SensorChart({
 
       {/* Chart */}
       <div className="h-[300px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={chartData}
-            margin={{ top: 5, right: 10, left: 0, bottom: 85 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="hsl(var(--border))"
-              vertical={false}
-            />
+        {chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+            No readings in the selected time range
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{ top: 5, right: 16, left: 0, bottom: 36 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                vertical={false}
+              />
 
-            <XAxis
-              dataKey="time"
-              type="number"
-              domain={(() => {
-                if (chartData.length > 0) return ['dataMin', 'dataMax'];
-                const now = Date.now();
-                const range = timeRanges.find(r => r.value === selectedRange);
-                const hoursInMs = (range?.hours || 24) * 60 * 60 * 1000;
-                return [now - hoursInMs, now];
-              })()}
-              ticks={chartData.length < 50 ? chartData.map(d => d.time) : undefined}
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={10}
-              tickLine={true}
-              axisLine={false}
-              height={85}
-              angle={-45}
-              textAnchor="end"
-              dy={10}
-              tickFormatter={(value) => {
-                return format(new Date(value), 'MMM d, HH:mm:ss');
-              }}
-              minTickGap={0}
-              interval={0}
-            />
-            <YAxis
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              width={40}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: 'var(--radius)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              }}
-              labelStyle={{ color: 'hsl(var(--foreground))' }}
-              itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
-              labelFormatter={(value, payload) => {
-                if (payload?.[0]?.payload?.time) {
-                  return format(new Date(payload[0].payload.time), 'MMM d, HH:mm');
-                }
-                return String(value);
-              }}
-            />
-            <Legend
-              wrapperStyle={{ paddingTop: 16 }}
-              iconType="circle"
-              iconSize={8}
-            />
+              <XAxis
+                dataKey="time"
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => format(new Date(value), selectedRange === '1h' ? 'HH:mm' : 'MMM d HH:mm')}
+                minTickGap={40}
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                width={40}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                }}
+                labelStyle={{ color: 'hsl(var(--foreground))' }}
+                itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                labelFormatter={(value, payload) => {
+                  if (payload?.[0]?.payload?.time) {
+                    return format(new Date(payload[0].payload.time), 'MMM d, HH:mm');
+                  }
+                  return String(value);
+                }}
+              />
+              <Legend
+                wrapperStyle={{ paddingTop: 16 }}
+                iconType="circle"
+                iconSize={8}
+              />
 
-            {Object.entries(parameterConfig).map(([key, config]) =>
-              visibleParams.has(key) ? (
-                <Line
-                  key={key}
-                  type="monotone"
-                  dataKey={config.dataKey}
-                  name={`${config.label}${config.unit ? ` (${config.unit})` : ''}`}
-                  stroke={config.color}
-                  strokeWidth={2}
-                  dot={{ r: 3, strokeWidth: 1 }}
-                  activeDot={{ r: 4, strokeWidth: 0 }}
-                />
-              ) : null
-            )}
-          </LineChart>
-        </ResponsiveContainer>
+              {Object.entries(parameterConfig).map(([key, config]) =>
+                visibleParams.has(key) ? (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={config.dataKey}
+                    name={`${config.label}${config.unit ? ` (${config.unit})` : ''}`}
+                    stroke={config.color}
+                    strokeWidth={2}
+                    dot={chartData.length <= 40 ? { r: 2, strokeWidth: 1 } : false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                ) : null
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

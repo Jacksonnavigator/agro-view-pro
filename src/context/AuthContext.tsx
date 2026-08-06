@@ -1,10 +1,18 @@
 // Authentication context for role-based access control
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  User as FirebaseUser,
+} from 'firebase/auth';
 import { User, UserRole } from '@/types/device';
+import { auth, database, ref, get } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   hasRole: (role: UserRole) => boolean;
@@ -12,51 +20,70 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demonstration
-const mockUsers: Record<string, { password: string; user: User }> = {
-  'admin@agroview.pro': {
-    password: 'admin123',
-    user: {
-      id: 'user-1',
-      email: 'admin@agroview.pro',
-      name: 'Admin User',
-      role: 'admin',
-    },
-  },
-  'viewer@agroview.pro': {
-    password: 'viewer123',
-    user: {
-      id: 'user-2',
-      email: 'viewer@agroview.pro',
-      name: 'Viewer User',
-      role: 'viewer',
-    },
-  },
-};
+const normalizeRole = (value: unknown): UserRole =>
+  value === 'admin' ? 'admin' : 'viewer';
+
+async function resolveUser(firebaseUser: FirebaseUser): Promise<User> {
+  const token = await firebaseUser.getIdTokenResult(true);
+  let role = normalizeRole(token.claims.role);
+  let name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+
+  try {
+    const profileSnapshot = await get(ref(database, `users/${firebaseUser.uid}`));
+    if (profileSnapshot.exists()) {
+      const profile = profileSnapshot.val() as { role?: UserRole; name?: string };
+      role = normalizeRole(profile.role || role);
+      name = profile.name || name;
+    }
+  } catch (error) {
+    console.warn('Unable to load user profile from Firebase Database:', error);
+  }
+
+  return {
+    id: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    name,
+    role,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Check for persisted session
-    const savedUser = localStorage.getItem('auth_user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setUser(await resolveUser(firebaseUser));
+      } catch (error) {
+        console.error('Failed to resolve authenticated user:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    });
+  }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const mockUser = mockUsers[email.toLowerCase()];
-    if (mockUser && mockUser.password === password) {
-      setUser(mockUser.user);
-      localStorage.setItem('auth_user', JSON.stringify(mockUser.user));
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      setUser(await resolveUser(credential.user));
       return true;
+    } catch (error) {
+      console.error('Firebase sign-in failed:', error);
+      return false;
     }
-    return false;
   }, []);
 
   const logout = useCallback(() => {
+    void signOut(auth);
     setUser(null);
-    localStorage.removeItem('auth_user');
   }, []);
 
   const hasRole = useCallback(
@@ -74,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
+        isLoading,
         login,
         logout,
         hasRole,

@@ -1,0 +1,32 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - img "AgroView Pro" [ref=e10]
+      - heading "AgroView Pro" [level=1] [ref=e13]
+      - paragraph [ref=e14]: IoT Soil Multi-Parameter Monitoring
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - heading "Welcome back" [level=3] [ref=e19]
+        - paragraph [ref=e20]: Sign in to access your dashboard
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e23]:
+            - text: Email
+            - textbox "Email" [ref=e24]:
+              - /placeholder: admin@agroview.pro
+          - generic [ref=e25]:
+            - text: Password
+            - generic [ref=e26]:
+              - textbox "Password" [ref=e27]:
+                - /placeholder: ••••••••
+              - button [ref=e28] [cursor=pointer]
+          - button "Sign in" [ref=e32] [cursor=pointer]
+        - generic [ref=e33]:
+          - paragraph [ref=e34]: Demo Credentials
+          - generic [ref=e36]:
+            - paragraph [ref=e37]: "Admin: admin@agroview.pro / admin123"
+            - paragraph [ref=e38]: "Viewer: viewer@agroview.pro / viewer123"
+    - paragraph [ref=e39]: © 2024 AgroView Pro. Enterprise IoT Monitoring Platform.

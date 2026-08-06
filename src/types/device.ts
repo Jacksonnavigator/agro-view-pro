@@ -21,6 +21,22 @@ export interface SensorThresholds {
   ec: { min: number; max: number };
 }
 
+export interface SystemSettings {
+  refreshInterval: number;
+  retention: number;
+  offlineDetection: boolean;
+  offlineAfterMinutes: number;
+}
+
+export interface AppSettings {
+  thresholds: SensorThresholds;
+  system: SystemSettings;
+  account: {
+    reportEmail: string;
+  };
+  plotLocations: Record<string, { lat: number; lng: number }>;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -61,6 +77,13 @@ export interface User {
   name: string;
   role: UserRole;
   avatar?: string;
+}
+
+export interface DeviceFreshness {
+  onlineCount: number;
+  offlineCount: number;
+  latestSensorTimestamp: Date | null;
+  hasLiveDevices: boolean;
 }
 
 export interface TimeRange {

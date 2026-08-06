@@ -2,7 +2,7 @@
 import { forwardRef } from 'react';
 import { useDevices } from '@/context/DeviceContext';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Clock, Activity } from 'lucide-react';
+import { RefreshCw, Clock, Activity, WifiOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +13,14 @@ interface HeaderProps {
 }
 
 export const Header = forwardRef<HTMLElement, HeaderProps>(function Header({ title, subtitle, children }, ref) {
-  const { isLoading, lastRefresh, refreshData } = useDevices();
+  const { isLoading, lastRefresh, refreshData, connectionStatus, deviceFreshness } = useDevices();
+
+  const freshnessLabel = deviceFreshness.hasLiveDevices
+    ? `${deviceFreshness.onlineCount} device${deviceFreshness.onlineCount === 1 ? '' : 's'} online`
+    : deviceFreshness.latestSensorTimestamp
+      ? 'All devices offline'
+      : 'No sensor data';
+  const FreshnessIcon = deviceFreshness.hasLiveDevices ? Activity : WifiOff;
 
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -34,19 +41,25 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header({ tit
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Live indicator */}
-        <div className="flex items-center gap-2 rounded-full bg-success/10 px-3 py-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-          </span>
-          <span className="text-xs font-medium text-success">Live</span>
+        {/* Device freshness indicator */}
+        <div
+          className={cn(
+            'flex items-center gap-2 rounded-full px-3 py-1.5',
+            deviceFreshness.hasLiveDevices ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+          )}
+        >
+          <FreshnessIcon className="h-3.5 w-3.5" />
+          <span className="text-xs font-medium">{freshnessLabel}</span>
         </div>
 
         {/* Last updated indicator */}
         <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
-          <span>Updated {formatDistanceToNow(lastRefresh, { addSuffix: true })}</span>
+          <span>
+            {deviceFreshness.latestSensorTimestamp
+              ? `Latest sensor ${formatDistanceToNow(deviceFreshness.latestSensorTimestamp, { addSuffix: true })}`
+              : `Checked ${formatDistanceToNow(lastRefresh, { addSuffix: true })}`}
+          </span>
         </div>
 
         {/* Refresh button */}
@@ -62,6 +75,16 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header({ tit
         </Button>
 
         {/* Additional actions */}
+        <span
+          className={cn(
+            'hidden sm:inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+            connectionStatus === 'connected' && 'bg-success/10 text-success',
+            connectionStatus === 'connecting' && 'bg-warning/10 text-warning',
+            connectionStatus === 'disconnected' && 'bg-destructive/10 text-destructive'
+          )}
+        >
+          Firebase {connectionStatus}
+        </span>
         {children}
       </div>
     </header>
