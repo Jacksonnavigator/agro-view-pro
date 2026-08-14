@@ -53,21 +53,21 @@ export function StatsOverview() {
         <Card
           key={stat.label}
           className={cn(
-            'group border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5',
+            'group border-border/80 bg-gradient-to-br from-card to-secondary/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-25px_rgba(15,23,42,0.18)]',
             stat.glowColor
           )}
         >
-          <CardContent className="p-4">
+          <CardContent className="p-5">
             <div className="flex items-start justify-between">
-              <div className={cn('rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110', stat.bgColor)}>
-                <stat.icon className={cn('h-4 w-4', stat.color)} />
+              <div className={cn('rounded-2xl p-3 shadow-sm ring-1 ring-black/5 transition-transform duration-300 group-hover:scale-105', stat.bgColor)}>
+                <stat.icon className={cn('h-5 w-5', stat.color)} />
               </div>
             </div>
-            <div className="mt-3">
+            <div className="mt-4">
               <p className={cn('font-mono text-3xl font-bold tracking-tight', stat.color)}>
                 {stat.value}
               </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{stat.label}</p>
+              <p className="mt-1 text-sm font-medium text-muted-foreground">{stat.label}</p>
             </div>
           </CardContent>
         </Card>

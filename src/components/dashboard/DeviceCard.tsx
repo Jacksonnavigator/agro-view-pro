@@ -47,7 +47,7 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
 
   return (
     <Card className={cn(
-      'group relative overflow-hidden premium-card border-white/5 bg-gradient-to-br from-card to-card/90 backdrop-blur-2xl transition-all duration-500 hover:-translate-y-2',
+      'group relative overflow-hidden premium-card border border-border/80 bg-gradient-to-br from-white via-card to-secondary/20 transition-all duration-500 hover:-translate-y-1.5',
       statusGlow[device.status],
       className
     )}>
@@ -79,7 +79,7 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             'rounded-2xl border p-3.5 transition-all duration-300',
             moistureStatus
               ? 'border-warning/30 bg-warning/5 ring-1 ring-warning/10'
-              : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.06]'
+              : 'border-border/80 bg-secondary/30 hover:bg-secondary/50'
           )}>
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-info/10 p-1.5">
@@ -97,7 +97,7 @@ export function DeviceCard({ device, className }: DeviceCardProps) {
             'rounded-2xl border p-3.5 transition-all duration-300',
             tempStatus
               ? 'border-warning/30 bg-warning/5 ring-1 ring-warning/10'
-              : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.06]'
+              : 'border-border/80 bg-secondary/30 hover:bg-secondary/50'
           )}>
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-warning/10 p-1.5">

@@ -16,6 +16,7 @@ import { Download, Database, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { exportHistoricalDataCSV } from '@/utils/exportUtils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UI_CONFIG } from '@/config/app-config';
 
 const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(_props, ref) {
     const { devices, getDeviceHistory, isLoading } = useDevices();
@@ -85,9 +86,6 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
                                     <TableHead className="text-right">Temp</TableHead>
                                     <TableHead className="text-right">pH</TableHead>
                                     <TableHead className="text-right">EC</TableHead>
-                                    <TableHead className="text-right hidden lg:table-cell">Nitrogen</TableHead>
-                                    <TableHead className="text-right hidden lg:table-cell">Phosphorus</TableHead>
-                                    <TableHead className="text-right hidden lg:table-cell">Potassium</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -104,7 +102,7 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    allRecords.slice(0, 200).map((record, i) => (
+                                    allRecords.slice(0, UI_CONFIG.pagination.maxDisplayedRecords).map((record, i) => (
                                         <TableRow key={`${record.deviceName}-${record.timestamp.getTime()}-${i}`} className="border-white/5 hover:bg-white/[0.03] transition-colors text-[12px]">
                                             <TableCell className="font-mono text-muted-foreground whitespace-nowrap">
                                                 {format(record.timestamp, 'MMM d, HH:mm:ss')}
@@ -119,15 +117,6 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
                                             <TableCell className="text-right font-mono text-warning">{record.readings.temperature}°C</TableCell>
                                             <TableCell className="text-right font-mono text-success">{record.readings.ph}</TableCell>
                                             <TableCell className="text-right font-mono text-purple-400">{record.readings.ec}</TableCell>
-                                            <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-70">
-                                                {record.readings.nitrogen ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
-                                            </TableCell>
-                                            <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-70">
-                                                {record.readings.phosphorus ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
-                                            </TableCell>
-                                            <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-70">
-                                                {record.readings.potassium ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
-                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -139,7 +128,7 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
 
             <div className="flex justify-between items-center px-2">
                 <div className="text-[11px] text-muted-foreground">
-                    Showing latest {Math.min(allRecords.length, 200)} transmissions across {devices.length} active units
+                    Showing latest {Math.min(allRecords.length, UI_CONFIG.pagination.maxDisplayedRecords)} transmissions across {devices.length} active units
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground animate-pulse">
                     <div className="h-1.5 w-1.5 rounded-full bg-success" />

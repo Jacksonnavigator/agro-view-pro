@@ -45,8 +45,9 @@ import { exportDevicesCSV } from '@/utils/exportUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { DeviceStatus } from '@/types/device';
 import { useDebounce } from '@/hooks/useDebounce';
+import { UI_CONFIG } from '@/config/app-config';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = UI_CONFIG.pagination.itemsPerPage;
 
 const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref) {
   const { devices, plots, isLoading, error, refreshData } = useDevices();
@@ -217,9 +218,6 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
                   <TableHead className="text-right">Temp</TableHead>
                   <TableHead className="text-right">pH</TableHead>
                   <TableHead className="text-right">EC</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Nitrogen</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Phosphorus</TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">Potassium</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -246,15 +244,6 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
                     </TableCell>
                     <TableCell className="text-right font-mono text-purple-400">
                       {device.readings.ec}
-                    </TableCell>
-                    <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-80">
-                      {device.readings.nitrogen ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
-                    </TableCell>
-                    <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-80">
-                      {device.readings.phosphorus ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
-                    </TableCell>
-                    <TableCell className="text-right hidden lg:table-cell font-mono text-xs opacity-80">
-                      {device.readings.potassium ?? '—'} <span className="text-[9px] text-muted-foreground">mg/kg</span>
                     </TableCell>
                     <TableCell>
                       <Button

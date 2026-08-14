@@ -5,7 +5,17 @@ export interface FirebaseReading {
   moisture: number;
   ph: number;
   temperature: number;
+  timestamp?: string;
+  [key: string]: any; // Allow extra fields like baud_rate, irrigation_sensor, etc.
+}
 
+// Updated to handle nested structure with 'latest' and 'readings'
+export interface FirebasePlotDataNested {
+  latest?: FirebaseReading;
+  readings?: {
+    [timestamp: string]: FirebaseReading;
+  };
+  [timestamp: string]?: FirebaseReading; // Fallback for flat structure
 }
 
 export interface FirebasePlotData {
@@ -13,7 +23,7 @@ export interface FirebasePlotData {
 }
 
 export interface FirebaseDevicesData {
-  [plotId: string]: FirebasePlotData;
+  [plotId: string]: FirebasePlotDataNested | FirebasePlotData;
 }
 
 // Fallback thresholds if not in localStorage
@@ -91,23 +101,50 @@ interface TransformOptions {
 }
 
 // Extract all historical readings from Firebase data for a specific plot
+// Handles both nested structure (latest/readings) and flat structure (legacy)
 export const extractHistoricalReadings = (
-  plotData: FirebasePlotData
+  plotData: any
 ): { timestamp: Date; readings: SensorReading }[] => {
   const readings: { timestamp: Date; readings: SensorReading }[] = [];
 
-  Object.entries(plotData).forEach(([timestampKey, reading]) => {
-    const timestamp = parseFirebaseTimestamp(timestampKey);
-    readings.push({
-      timestamp,
-      readings: {
-        moisture: reading.moisture ?? 0,
-        temperature: reading.temperature ?? 0,
-        ph: reading.ph ?? 7,
-        ec: reading.ec ?? 0,
-      },
+  // Handle nested structure with 'readings' object
+  if (plotData.readings && typeof plotData.readings === 'object') {
+    Object.entries(plotData.readings).forEach(([timestampKey, reading]: [string, any]) => {
+      if (typeof reading === 'object' && reading !== null) {
+        const timestamp = parseFirebaseTimestamp(timestampKey);
+        readings.push({
+          timestamp,
+          readings: {
+            moisture: reading.moisture ?? 0,
+            temperature: reading.temperature ?? 0,
+            ph: reading.ph ?? 7,
+            ec: reading.ec ?? 0,
+          },
+        });
+      }
     });
-  });
+  } else {
+    // Handle flat structure (legacy)
+    Object.entries(plotData).forEach(([timestampKey, reading]: [string, any]) => {
+      // Skip special keys
+      if (timestampKey === 'latest' || timestampKey === 'readings') {
+        return;
+      }
+
+      if (typeof reading === 'object' && reading !== null) {
+        const timestamp = parseFirebaseTimestamp(timestampKey);
+        readings.push({
+          timestamp,
+          readings: {
+            moisture: reading.moisture ?? 0,
+            temperature: reading.temperature ?? 0,
+            ph: reading.ph ?? 7,
+            ec: reading.ec ?? 0,
+          },
+        });
+      }
+    });
+  }
 
   // Sort by timestamp ascending
   return readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
@@ -140,13 +177,39 @@ export const transformFirebaseData = (
 ): Device[] => {
   const devicesList: Device[] = [];
 
-  Object.entries(data).forEach(([plotId, plotData]) => {
-    // Get the latest reading for this plot
-    const timestamps = Object.keys(plotData).sort();
-    const latestTimestamp = timestamps[timestamps.length - 1];
+  Object.entries(data).forEach(([plotId, plotData]: [string, any]) => {
+    let reading: FirebaseReading | null = null;
+    let latestTimestamp: string = '';
 
-    if (latestTimestamp && plotData[latestTimestamp]) {
-      const reading = plotData[latestTimestamp];
+    // Handle nested structure with 'latest' object
+    if (plotData.latest && typeof plotData.latest === 'object') {
+      reading = plotData.latest;
+      // Use timestamp from the latest object if available, otherwise use current time
+      if (reading.timestamp) {
+        latestTimestamp = reading.timestamp;
+      } else {
+        latestTimestamp = new Date().toISOString();
+      }
+    } else {
+      // Fallback: Find latest timestamp from flat structure or readings
+      const timestamps = Object.keys(plotData)
+        .filter(key => key !== 'latest' && key !== 'readings')
+        .sort();
+
+      if (timestamps.length > 0) {
+        latestTimestamp = timestamps[timestamps.length - 1];
+        reading = plotData[latestTimestamp];
+      } else if (plotData.readings) {
+        // Try to get from readings object
+        const readingTimestamps = Object.keys(plotData.readings).sort();
+        if (readingTimestamps.length > 0) {
+          latestTimestamp = readingTimestamps[readingTimestamps.length - 1];
+          reading = plotData.readings[latestTimestamp];
+        }
+      }
+    }
+
+    if (reading && typeof reading === 'object') {
       const deviceId = `device-${plotId}`;
       const thresholds = customThresholds.get(deviceId) || defaultThresholds;
 
@@ -157,7 +220,9 @@ export const transformFirebaseData = (
         ec: reading.ec ?? 0,
       };
 
-      const lastUpdated = parseFirebaseTimestamp(latestTimestamp);
+      const lastUpdated = latestTimestamp 
+        ? parseFirebaseTimestamp(latestTimestamp)
+        : new Date();
       const status = getDeviceStatus(lastUpdated, offlineAfterMinutes, offlineDetection);
       const plotConfig = plotConfigs[plotId] || {
         name: plotId.replace(/_/g, ' '),

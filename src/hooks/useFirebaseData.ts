@@ -101,7 +101,7 @@ export function useFirebaseData() {
         setSettingsState(mergeSettings(value));
       },
       (err) => {
-        console.error('Failed to load settings:', err);
+        // Settings load error, using defaults
         setError(`Settings error: ${err.message}`);
       }
     );
@@ -115,7 +115,7 @@ export function useFirebaseData() {
         setCustomThresholds(new Map(Object.entries(values)));
       },
       (err) => {
-        console.error('Failed to load device thresholds:', err);
+        // Device thresholds load error, using defaults
       }
     );
   }, []);
@@ -180,7 +180,7 @@ export function useFirebaseData() {
               markInitialSnapshot();
             },
             (err) => {
-              console.error(`Firebase latest-reading error for ${plotId}:`, err);
+              // Firebase latest-reading error
               setError(`Connection error: ${err.message}`);
               setConnectionStatus('disconnected');
               setIsLoading(false);
@@ -205,7 +205,7 @@ export function useFirebaseData() {
               markInitialSnapshot();
             },
             (err) => {
-              console.error(`Firebase history error for ${plotId}:`, err);
+              // Firebase history error
               setError(`Connection error: ${err.message}`);
               setConnectionStatus('disconnected');
               setIsLoading(false);
@@ -216,7 +216,7 @@ export function useFirebaseData() {
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to initialize Firebase subscriptions';
-        console.error(message);
+        // Firebase initialization error
         setError(message);
         setConnectionStatus('disconnected');
         setIsLoading(false);

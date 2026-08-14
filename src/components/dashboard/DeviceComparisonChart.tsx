@@ -24,18 +24,14 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useDevices } from '@/context/DeviceContext';
+import { CHART_CONFIG } from '@/config/app-config';
 
 interface DeviceComparisonChartProps {
   devices: Device[];
   className?: string;
 }
 
-const timeRanges: TimeRange[] = [
-  { label: '1H', value: '1h', hours: 1 },
-  { label: '24H', value: '24h', hours: 24 },
-  { label: '7D', value: '7d', hours: 168 },
-  { label: '30D', value: '30d', hours: 720 },
-];
+const timeRanges: TimeRange[] = CHART_CONFIG.timeRanges as unknown as TimeRange[];
 
 const parameters = [
   { key: 'moisture', label: 'Moisture (%)', unit: '%' },
@@ -234,8 +230,8 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
                       name={device?.name || deviceId}
                       stroke={deviceColors[devices.findIndex((d) => d.id === deviceId) % deviceColors.length]}
                       strokeWidth={2}
-                      dot={chartData.length <= 40 ? { r: 2, strokeWidth: 1 } : false}
-                      activeDot={{ r: 4, strokeWidth: 0 }}
+                    dot={chartData.length <= CHART_CONFIG.dataPointThreshold ? { r: CHART_CONFIG.dotSize.normal, strokeWidth: 1 } : false}
+                    activeDot={{ r: CHART_CONFIG.dotSize.active, strokeWidth: 0 }}
                     />
                   );
                 })}

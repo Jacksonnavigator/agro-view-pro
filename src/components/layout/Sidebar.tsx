@@ -29,10 +29,9 @@ const navItems = [
   { path: '/devices', label: 'Live Data Hub', icon: Cpu },
   { path: '/master-records', label: 'Master Records', icon: Database },
   { path: '/compare', label: 'Compare', icon: GitCompare },
-
   { path: '/plots', label: 'Plots', icon: MapPin },
   { path: '/reports', label: 'Reports', icon: FileBarChart },
-  { path: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
+  { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapsedChange }: SidebarProps) {
@@ -57,17 +56,19 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
       )}
     >
       {/* Header */}
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border/50 px-4">
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border/50 px-4 bg-gradient-to-r from-primary/5 via-transparent to-amber-400/5">
         {!collapsed && (
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <img
-              src="/favicon.png"
-              alt="AgroView Pro"
-              className="h-9 w-9 rounded-xl shadow-lg shadow-primary/20 transition-transform duration-300 group-hover:scale-105"
-            />
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-emerald-500 to-amber-400 shadow-[0_12px_20px_-12px_rgba(16,185,129,0.8)] ring-2 ring-white/70">
+              <img
+                src="/favicon.png"
+                alt="AgroView Pro"
+                className="h-6 w-6 rounded-lg"
+              />
+            </div>
             <div>
               <span className="font-bold text-sidebar-foreground">AgroView Pro</span>
-              <p className="text-[10px] text-muted-foreground -mt-0.5">IoT Dashboard</p>
+              <p className="text-[10px] text-muted-foreground -mt-0.5">Luxury Farm Tech</p>
             </div>
           </Link>
         )}
@@ -85,9 +86,6 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-3">
           {navItems.map((item) => {
-            // Hide admin-only items from non-admin users
-            if (item.adminOnly && !hasRole('admin')) return null;
-
             const isActive = location.pathname === item.path ||
               (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
 

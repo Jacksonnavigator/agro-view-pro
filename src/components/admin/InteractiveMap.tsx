@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { Device } from '@/types/device';
 import { Button } from '@/components/ui/button';
 import { Satellite, Map as MapIcon } from 'lucide-react';
+import { STATUS_COLORS } from '@/config/app-config';
 
 interface InteractiveMapProps {
     onLocationSelect?: (lat: number, lng: number) => void;
@@ -19,7 +20,7 @@ const createSelectionIcon = () => {
             <div style="
                 width: 32px;
                 height: 32px;
-                background: #3b82f6;
+                background: ${STATUS_COLORS.processing};
                 border: 4px solid white;
                 border-radius: 50%;
                 box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
@@ -45,7 +46,7 @@ const createSelectionIcon = () => {
 const createDeviceIcon = () => {
     return L.divIcon({
         className: 'device-marker',
-        html: `<div style="width: 12px; height: 12px; background: #22c55e; border: 2px solid white; border-radius: 50%;"></div>`,
+        html: `<div style="width: 12px; height: 12px; background: ${STATUS_COLORS.online}; border: 2px solid white; border-radius: 50%;"></div>`,
         iconSize: [12, 12],
         iconAnchor: [6, 6],
     });

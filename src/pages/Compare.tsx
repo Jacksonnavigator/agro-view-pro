@@ -25,10 +25,10 @@ const Compare = forwardRef<HTMLDivElement, object>(function Compare(_props, ref)
       return { moisture: 0, temp: 0, ph: 0, ec: 0 };
     }
     return {
-      moisture: devices.reduce((sum, d) => sum + d.readings.moisture, 0) / devices.length,
-      temp: devices.reduce((sum, d) => sum + d.readings.temperature, 0) / devices.length,
-      ph: devices.reduce((sum, d) => sum + d.readings.ph, 0) / devices.length,
-      ec: devices.reduce((sum, d) => sum + d.readings.ec, 0) / devices.length,
+      moisture: devices.reduce((sum, d) => sum + (d.readings?.moisture ?? 0), 0) / devices.length,
+      temp: devices.reduce((sum, d) => sum + (d.readings?.temperature ?? 0), 0) / devices.length,
+      ph: devices.reduce((sum, d) => sum + (d.readings?.ph ?? 7), 0) / devices.length,
+      ec: devices.reduce((sum, d) => sum + (d.readings?.ec ?? 0), 0) / devices.length,
     };
   }, [devices]);
 

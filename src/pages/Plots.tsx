@@ -35,10 +35,10 @@ const Plots = forwardRef<HTMLDivElement, object>(function Plots(_props, ref) {
 
     // Calculate averages safely
     const avgMoisture = plotDevices.length > 0
-      ? plotDevices.reduce((sum, d) => sum + d.readings.moisture, 0) / plotDevices.length
+      ? plotDevices.reduce((sum, d) => sum + (d.readings?.moisture ?? 0), 0) / plotDevices.length
       : 0;
     const avgTemp = plotDevices.length > 0
-      ? plotDevices.reduce((sum, d) => sum + d.readings.temperature, 0) / plotDevices.length
+      ? plotDevices.reduce((sum, d) => sum + (d.readings?.temperature ?? 0), 0) / plotDevices.length
       : 0;
 
     return {

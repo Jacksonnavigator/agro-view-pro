@@ -1,8 +1,10 @@
 // Dashboard header component with refresh controls
 import { forwardRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDevices } from '@/context/DeviceContext';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Clock, Activity, WifiOff } from 'lucide-react';
+import { RefreshCw, Clock, Activity, WifiOff, Settings } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +15,9 @@ interface HeaderProps {
 }
 
 export const Header = forwardRef<HTMLElement, HeaderProps>(function Header({ title, subtitle, children }, ref) {
+  const navigate = useNavigate();
   const { isLoading, lastRefresh, refreshData, connectionStatus, deviceFreshness } = useDevices();
+  const { hasRole } = useAuth();
 
   const freshnessLabel = deviceFreshness.hasLiveDevices
     ? `${deviceFreshness.onlineCount} device${deviceFreshness.onlineCount === 1 ? '' : 's'} online`
@@ -72,6 +76,18 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(function Header({ tit
         >
           <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
           <span className="hidden sm:inline">Refresh</span>
+        </Button>
+
+        {/* Settings button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/settings')}
+          className="gap-2 border-border/50 bg-card/50 backdrop-blur-sm hover:bg-secondary/80"
+          title="System Settings"
+        >
+          <Settings className="h-4 w-4" />
+          <span className="hidden sm:inline">Settings</span>
         </Button>
 
         {/* Additional actions */}

@@ -36,7 +36,7 @@ async function resolveUser(firebaseUser: FirebaseUser): Promise<User> {
       name = profile.name || name;
     }
   } catch (error) {
-    console.warn('Unable to load user profile from Firebase Database:', error);
+    // Silently handle profile load failure, use default values
   }
 
   return {
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setUser(await resolveUser(firebaseUser));
       } catch (error) {
-        console.error('Failed to resolve authenticated user:', error);
+        // Failed to resolve user, handle gracefully
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(await resolveUser(credential.user));
       return true;
     } catch (error) {
-      console.error('Firebase sign-in failed:', error);
+      // Sign-in failed, return false for UI handling
       return false;
     }
   }, []);

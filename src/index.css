@@ -5,11 +5,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* IoT Dashboard Design System - Dark Industrial Theme */
+/* IoT Dashboard Design System - Light Modern Theme */
 
 /* Leaflet map fixes for clarity */
 .leaflet-container {
-  background: hsl(var(--muted)) !important;
+  background: hsl(210 14% 92%) !important;
   font-family: inherit;
   height: 100%;
   width: 100%;
@@ -17,7 +17,7 @@
 }
 
 .leaflet-tile-pane {
-  filter: none;
+  filter: brightness(1.1);
 }
 
 /* Fix for missing marker icons */
@@ -59,6 +59,7 @@
   background: hsl(var(--card)) !important;
   color: hsl(var(--foreground)) !important;
   border-color: hsl(var(--border)) !important;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1) !important;
 }
 
 .leaflet-control-zoom a:hover {
@@ -66,16 +67,18 @@
 }
 
 .leaflet-control-attribution {
-  background: hsl(var(--card) / 0.9) !important;
+  background: hsl(var(--card) / 0.95) !important;
   color: hsl(var(--muted-foreground)) !important;
   font-size: 10px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1) !important;
 }
 
 .leaflet-popup-content-wrapper {
   background: hsl(var(--card)) !important;
   color: hsl(var(--foreground)) !important;
   border-radius: var(--radius) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid hsl(var(--border)) !important;
 }
 
 .leaflet-popup-tip {
@@ -92,77 +95,70 @@
 
 @layer base {
   :root {
-    /* Visible Industrial - Elevated lightness for maximum clarity */
-    --background: 145 15% 12%;
-    --foreground: 210 20% 98%;
+    /* Premium agricultural light theme */
+    --background: 150 30% 97%;
+    --foreground: 155 20% 16%;
 
-    /* Cards - Sharp, visible containers */
-    --card: 145 12% 16%;
-    --card-foreground: 210 20% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 155 20% 16%;
 
-    --popover: 145 12% 16%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 155 20% 16%;
 
-    /* Primary - Sharp Emerald Green */
-    --primary: 158 84% 45%;
-    --primary-foreground: 145 20% 6%;
+    --primary: 151 52% 37%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Clear matte surfaces */
-    --secondary: 145 10% 20%;
-    --secondary-foreground: 210 20% 90%;
+    --secondary: 150 22% 94%;
+    --secondary-foreground: 155 22% 18%;
 
-    --muted: 145 10% 18%;
-    --muted-foreground: 145 5% 65%;
+    --muted: 40 33% 96%;
+    --muted-foreground: 155 12% 40%;
 
-    --accent: 158 84% 25%;
-    --accent-foreground: 210 20% 98%;
+    --accent: 36 100% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Enhanced Status Colors */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive: 0 82% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 142 76% 45%;
-    --success-foreground: 145 20% 6%;
+    --success: 146 58% 39%;
+    --success-foreground: 0 0% 100%;
 
-    --warning: 45 93% 55%;
-    --warning-foreground: 145 20% 6%;
+    --warning: 38 94% 52%;
+    --warning-foreground: 0 0% 100%;
 
-    --info: 199 89% 55%;
-    --info-foreground: 145 20% 6%;
+    --info: 195 83% 46%;
+    --info-foreground: 0 0% 100%;
 
-    /* Chart Palette */
-    --chart-moisture: 199 89% 55%;
-    --chart-temperature: 45 93% 55%;
-    --chart-ph: 158 84% 45%;
-    --chart-ec: 280 65% 70%;
-    --chart-npk: 32 95% 60%;
+    --chart-moisture: 196 80% 46%;
+    --chart-temperature: 38 94% 52%;
+    --chart-ph: 150 52% 37%;
+    --chart-ec: 275 60% 51%;
+    --chart-npk: 32 88% 54%;
 
-    --border: 145 10% 22%;
-    --input: 145 10% 22%;
-    --ring: 158 84% 45%;
+    --border: 150 18% 88%;
+    --input: 150 20% 96%;
+    --ring: 151 52% 37%;
 
-    --radius: 1rem;
+    --radius: 1.1rem;
 
-    /* Sidebar - Anchored Contrast */
-    --sidebar-background: 145 15% 10%;
-    --sidebar-foreground: 145 5% 85%;
-    --sidebar-primary: 158 84% 45%;
-    --sidebar-primary-foreground: 145 20% 6%;
-    --sidebar-accent: 145 12% 14%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 145 12% 14%;
-    --sidebar-ring: 158 84% 45%;
+    --sidebar-background: 150 25% 99%;
+    --sidebar-foreground: 155 22% 16%;
+    --sidebar-primary: 151 52% 37%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 20% 95%;
+    --sidebar-accent-foreground: 155 22% 16%;
+    --sidebar-border: 150 18% 88%;
+    --sidebar-ring: 151 52% 37%;
 
-    /* Sophisticated Glow Shadows */
-    --glow-primary: 0 0 25px hsl(158 84% 45% / 0.15);
-    --glow-success: 0 0 20px hsl(142 76% 45% / 0.2);
-    --glow-warning: 0 0 20px hsl(45 93% 55% / 0.2);
-    --glow-danger: 0 0 20px hsl(0 84% 60% / 0.2);
-    --glow-info: 0 10px 15px -3px hsl(199 89% 55% / 0.1);
+    --glow-primary: 0 0 18px hsl(151 52% 37% / 0.12);
+    --glow-success: 0 0 18px hsl(146 58% 39% / 0.12);
+    --glow-warning: 0 0 18px hsl(38 94% 52% / 0.14);
+    --glow-danger: 0 0 18px hsl(0 82% 60% / 0.12);
+    --glow-info: 0 0 18px hsl(195 83% 46% / 0.12);
   }
 
   .dark {
-    /* Same as root - dark by default */
+    /* Optional dark mode - same as old root if needed */
   }
 }
 
@@ -174,6 +170,10 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Space Grotesk', sans-serif;
+    background-image:
+      radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(245, 158, 11, 0.12), transparent 22%),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
   }
 
   /* Monospace for data values */
@@ -217,18 +217,20 @@
 
   /* Premium interactive card */
   .premium-card {
-    @apply glass transition-all duration-500 border-white/5;
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--secondary) / 0.5) 100%);
+    @apply glass transition-all duration-500 border-border/80;
+    background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(244, 250, 247, 0.9) 100%);
+    box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.18);
   }
 
   .premium-card:hover {
     @apply border-primary/30 -translate-y-1;
-    box-shadow: 0 20px 40px -20px hsl(var(--primary) / 0.2);
+    box-shadow: 0 24px 44px -28px hsl(var(--primary) / 0.25);
   }
 
   /* Glass morphism effect */
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card/75 backdrop-blur-xl border border-border/60;
+    box-shadow: 0 10px 28px -22px rgba(15, 23, 42, 0.15);
   }
 
   /* Gradient text */

@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { Device } from '@/types/device';
 import { Button } from '@/components/ui/button';
 import { Satellite, Map as MapIcon } from 'lucide-react';
+import { STATUS_COLORS } from '@/config/app-config';
 
 interface LeafletMapProps {
   devices: Device[];
@@ -18,7 +19,7 @@ interface LeafletMapProps {
 
 // Create custom icon based on device status
 const createCustomIcon = (status: Device['status']) => {
-  const color = status === 'online' ? '#22c55e' : status === 'warning' ? '#eab308' : '#ef4444';
+  const color = status === 'online' ? STATUS_COLORS.online : status === 'warning' ? STATUS_COLORS.warning : STATUS_COLORS.offline;
   
   return L.divIcon({
     className: 'custom-marker',
@@ -46,7 +47,7 @@ const createPlotIcon = () => {
       <div style="
         width: 32px;
         height: 32px;
-        background: #3b82f6;
+        background: ${STATUS_COLORS.processing};
         border: 4px solid white;
         border-radius: 50%;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
@@ -211,8 +212,8 @@ export default function LeafletMap({ devices, height, plots }: LeafletMapProps) 
                 </div>
                 <div className="space-y-1 text-sm text-gray-600">
                   <p>Plot: {device.plotName}</p>
-                  <p>Moisture: <span className="font-mono">{device.readings.moisture}%</span></p>
-                  <p>Temperature: <span className="font-mono">{device.readings.temperature}°C</span></p>
+                  <p>Moisture: <span className="font-mono">{device.readings?.moisture ?? 'N/A'}%</span></p>
+                  <p>Temperature: <span className="font-mono">{device.readings?.temperature ?? 'N/A'}°C</span></p>
                 </div>
                 <a 
                   href={`/device/${device.id}`}

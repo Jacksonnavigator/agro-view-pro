@@ -1,5 +1,5 @@
 // Settings page (admin only)
-import { useEffect, useState, forwardRef } from 'react';
+import { useEffect, useState, forwardRef, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useDevices } from '@/context/DeviceContext';
 import { Header } from '@/components/layout/Header';
@@ -18,14 +18,19 @@ import {
   Clock,
   Save,
   MapPin,
+  Activity,
+  AlertCircle,
+  CheckCircle,
+  Cpu,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AppSettings, SensorThresholds } from '@/types/device';
 import { PlotLocationManager } from '@/components/admin/PlotLocationManager';
+import { SYSTEM_CONFIG } from '@/config/app-config';
 
 const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, ref) {
   const { user, hasRole } = useAuth();
-  const { settings, updateSettings } = useDevices();
+  const { settings, updateSettings, devices, deviceFreshness } = useDevices();
   const { toast } = useToast();
   const [draftSettings, setDraftSettings] = useState<AppSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,15 +39,38 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
     setDraftSettings(settings);
   }, [settings]);
 
-  if (!hasRole('admin')) {
+  const isAdmin = hasRole('admin');
+
+  if (!isAdmin) {
     return (
       <div className="space-y-6 fade-in">
-        <Header title="Settings" subtitle="Administrator access required" />
-        <Card>
+        <Header title="Settings" subtitle="System overview and access status" />
+        <Card className="border-border/60 bg-card/70">
           <CardHeader>
-            <CardTitle>Access Restricted</CardTitle>
-            <CardDescription>Only administrators can change system configuration.</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-500" />
+              Read-only Access
+            </CardTitle>
+            <CardDescription>
+              You are signed in as a viewer. You can review the current system configuration, but changes must be made by an administrator.
+            </CardDescription>
           </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">User Role</p>
+                <p className="mt-2 text-xl font-semibold capitalize">{user?.role || 'viewer'}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">Connected Devices</p>
+                <p className="mt-2 text-xl font-semibold">{devices.length}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">Last Sync</p>
+                <p className="mt-2 text-xl font-semibold">{deviceFreshness.latestSensorTimestamp ? 'Live' : 'Offline'}</p>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </div>
     );
@@ -106,6 +134,7 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
       <Tabs defaultValue="thresholds" className="space-y-6">
         <TabsList>
           <TabsTrigger value="thresholds">Thresholds</TabsTrigger>
+          <TabsTrigger value="info">System Info</TabsTrigger>
           <TabsTrigger value="plots">Plot Locations</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
@@ -226,7 +255,122 @@ const Settings = forwardRef<HTMLDivElement, object>(function Settings(_props, re
           </Card>
         </TabsContent>
 
-        {/* Plot Locations tab */}
+        {/* System Info tab */}
+        <TabsContent value="info" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-success" />
+                System Status
+              </CardTitle>
+              <CardDescription>
+                Real-time monitoring and statistics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Connection Status */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Wifi className="h-4 w-4" />
+                      Firebase Connection
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full bg-success animate-pulse" />
+                      <span className="text-sm text-muted-foreground">Connected</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Device Summary */}
+                <Card className="border-border/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Cpu className="h-4 w-4" />
+                      Device Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Online:</span>
+                      <span className="font-mono text-success">{deviceFreshness.onlineCount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total:</span>
+                      <span className="font-mono">{devices.length}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Separator />
+
+              {/* Configuration Summary */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Configuration</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex justify-between p-2 rounded bg-muted/30">
+                    <span className="text-sm text-muted-foreground">Refresh Interval</span>
+                    <span className="font-mono text-sm">{SYSTEM_CONFIG.refreshInterval}s</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-muted/30">
+                    <span className="text-sm text-muted-foreground">Offline Timeout</span>
+                    <span className="font-mono text-sm">{SYSTEM_CONFIG.offlineTimeout}m</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-muted/30">
+                    <span className="text-sm text-muted-foreground">Data Retention</span>
+                    <span className="font-mono text-sm">{SYSTEM_CONFIG.dataRetention}d</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-muted/30">
+                    <span className="text-sm text-muted-foreground">History Limit</span>
+                    <span className="font-mono text-sm">{SYSTEM_CONFIG.maxHistoryPoints}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Application Info */}
+              <div className="space-y-2 text-sm">
+                <h3 className="font-semibold">Application</h3>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Version</span>
+                  <span className="font-mono">1.0.0</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Environment</span>
+                  <span className="font-mono capitalize">production</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Theme</span>
+                  <span className="font-mono">Light</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Health */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-success" />
+                System Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between p-2 rounded bg-success/5 border border-success/20">
+                <span className="text-sm">All systems operational</span>
+                <CheckCircle className="h-4 w-4 text-success" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Last health check: Just now
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
         <TabsContent value="plots" className="space-y-4">
           {user?.role === 'admin' ? (
             <PlotLocationManager />

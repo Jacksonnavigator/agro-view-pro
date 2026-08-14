@@ -23,10 +23,10 @@ const aggregateByMinute = (histories: HistoricalReading[][]): HistoricalReading[
     const minute = Math.floor(reading.timestamp.getTime() / 60000) * 60000;
     const bucket = buckets.get(minute) || { count: 0, moisture: 0, temperature: 0, ph: 0, ec: 0 };
     bucket.count += 1;
-    bucket.moisture += reading.readings.moisture;
-    bucket.temperature += reading.readings.temperature;
-    bucket.ph += reading.readings.ph;
-    bucket.ec += reading.readings.ec;
+    bucket.moisture += reading.readings?.moisture ?? 0;
+    bucket.temperature += reading.readings?.temperature ?? 0;
+    bucket.ph += reading.readings?.ph ?? 7;
+    bucket.ec += reading.readings?.ec ?? 0;
     buckets.set(minute, bucket);
   });
 

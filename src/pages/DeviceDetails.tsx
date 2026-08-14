@@ -157,40 +157,6 @@ const DeviceDetails = forwardRef<HTMLDivElement, object>(function DeviceDetails(
         />
       </div>
 
-      {/* NPK readings if available */}
-      {readings.nitrogen !== undefined && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">NPK Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border p-4 text-center">
-                <p className="text-sm text-muted-foreground">Nitrogen (N)</p>
-                <p className="mt-1 font-mono text-2xl font-bold text-chart-moisture">
-                  {readings.nitrogen}
-                </p>
-                <p className="text-xs text-muted-foreground">mg/kg</p>
-              </div>
-              <div className="rounded-lg border p-4 text-center">
-                <p className="text-sm text-muted-foreground">Phosphorus (P)</p>
-                <p className="mt-1 font-mono text-2xl font-bold text-chart-npk">
-                  {readings.phosphorus}
-                </p>
-                <p className="text-xs text-muted-foreground">mg/kg</p>
-              </div>
-              <div className="rounded-lg border p-4 text-center">
-                <p className="text-sm text-muted-foreground">Potassium (K)</p>
-                <p className="mt-1 font-mono text-2xl font-bold text-chart-ec">
-                  {readings.potassium}
-                </p>
-                <p className="text-xs text-muted-foreground">mg/kg</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Historical chart */}
       <SensorChart
         data={historicalData}

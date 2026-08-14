@@ -14,6 +14,7 @@ import { HistoricalReading, TimeRange } from '@/types/device';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { CHART_CONFIG } from '@/config/app-config';
 
 interface SensorChartProps {
   data: HistoricalReading[];
@@ -23,12 +24,7 @@ interface SensorChartProps {
   onTimeRangeChange?: (range: TimeRange) => void;
 }
 
-const timeRanges: TimeRange[] = [
-  { label: '1H', value: '1h', hours: 1 },
-  { label: '24H', value: '24h', hours: 24 },
-  { label: '7D', value: '7d', hours: 168 },
-  { label: '30D', value: '30d', hours: 720 },
-];
+const timeRanges: TimeRange[] = CHART_CONFIG.timeRanges as unknown as TimeRange[];
 
 const parameterConfig = {
   moisture: {
@@ -163,7 +159,7 @@ export function SensorChart({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
-              margin={{ top: 5, right: 16, left: 0, bottom: 36 }}
+              margin={CHART_CONFIG.margins}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -220,8 +216,8 @@ export function SensorChart({
                     name={`${config.label}${config.unit ? ` (${config.unit})` : ''}`}
                     stroke={config.color}
                     strokeWidth={2}
-                    dot={chartData.length <= 40 ? { r: 2, strokeWidth: 1 } : false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
+                    dot={chartData.length <= CHART_CONFIG.dataPointThreshold ? { r: CHART_CONFIG.dotSize.normal, strokeWidth: 1 } : false}
+                    activeDot={{ r: CHART_CONFIG.dotSize.active, strokeWidth: 0 }}
                   />
                 ) : null
               )}
