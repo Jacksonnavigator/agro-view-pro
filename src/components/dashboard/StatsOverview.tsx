@@ -48,7 +48,7 @@ export function StatsOverview() {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 stagger-fade">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 stagger-fade">
       {statCards.map((stat) => (
         <Card
           key={stat.label}

@@ -164,11 +164,32 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
         subtitle="Generate and download sensor data reports"
       />
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-0 bg-gradient-to-br from-emerald-500/10 to-emerald-50 shadow-[0_18px_30px_-28px_rgba(16,185,129,0.35)]">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Total devices</p>
+            <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">{devices.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 bg-gradient-to-br from-sky-500/10 to-sky-50 shadow-[0_18px_30px_-28px_rgba(59,130,246,0.35)]">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Date range</p>
+            <p className="mt-3 text-lg font-semibold tracking-tight text-foreground">{format(dateRange.from, 'MMM d')} – {format(dateRange.to, 'MMM d')}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-0 bg-gradient-to-br from-amber-500/10 to-amber-50 shadow-[0_18px_30px_-28px_rgba(245,158,11,0.35)]">
+          <CardContent className="p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Selected</p>
+            <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">{selectedDevices.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quick export cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card
           className={cn(
-            'cursor-pointer card-hover border-border/50',
+            'cursor-pointer border-0 bg-gradient-to-br from-primary/10 to-primary/5 shadow-[0_18px_35px_-28px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5',
             (isExporting || isLoading) && 'opacity-50 pointer-events-none'
           )}
           onClick={() => handleQuickExport('daily')}
@@ -188,7 +209,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
 
         <Card
           className={cn(
-            'cursor-pointer card-hover border-border/50',
+            'cursor-pointer border-0 bg-gradient-to-br from-success/10 to-success/5 shadow-[0_18px_35px_-28px_rgba(34,197,94,0.18)] transition-all hover:-translate-y-0.5',
             (isExporting || isLoading) && 'opacity-50 pointer-events-none'
           )}
           onClick={() => handleQuickExport('weekly')}
@@ -208,7 +229,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
 
         <Card
           className={cn(
-            'cursor-pointer card-hover border-border/50',
+            'cursor-pointer border-0 bg-gradient-to-br from-info/10 to-info/5 shadow-[0_18px_35px_-28px_rgba(59,130,246,0.18)] transition-all hover:-translate-y-0.5',
             (isExporting || isLoading) && 'opacity-50 pointer-events-none'
           )}
           onClick={() => handleQuickExport('monthly')}
@@ -230,16 +251,16 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
       </div>
 
       {/* Quick device export */}
-      <Card className="border-border/50">
+      <Card className="border-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-[0_18px_40px_-30px_rgba(15,23,42,0.55)]">
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="rounded-lg bg-secondary p-3">
-                <Download className="h-6 w-6 text-foreground" />
+              <div className="rounded-xl bg-white/10 p-3 ring-1 ring-white/10">
+                <Download className="h-6 w-6 text-white" />
               </div>
               <div>
-                <p className="font-medium">Export Current Device Status</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-medium text-white">Export Current Device Status</p>
+                <p className="text-sm text-slate-300">
                   {isLoading ? 'Loading current readings...' : `Download current readings for all ${devices.length} devices`}
                 </p>
               </div>
@@ -247,7 +268,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
             <Button
               onClick={() => exportDevicesCSV(devices)}
               disabled={isExporting || isLoading || devices.length === 0}
-              className="gap-2"
+              className="gap-2 bg-white text-slate-900 hover:bg-slate-100"
             >
               <Download className="h-4 w-4" />
               Export CSV
@@ -257,7 +278,7 @@ const Reports = forwardRef<HTMLDivElement, object>(function Reports(_props, ref)
       </Card>
 
       {/* Custom report builder */}
-      <Card>
+      <Card className="border-0 bg-gradient-to-br from-card to-slate-50/80 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.18)]">
         <CardHeader>
           <CardTitle>Custom Report</CardTitle>
           <CardDescription>

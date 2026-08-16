@@ -46,6 +46,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { DeviceStatus } from '@/types/device';
 import { useDebounce } from '@/hooks/useDebounce';
 import { UI_CONFIG } from '@/config/app-config';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = UI_CONFIG.pagination.itemsPerPage;
 
@@ -138,6 +139,24 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
     );
   }
 
+  const summaryCards = [
+    {
+      label: 'Online devices',
+      value: devices.filter((device) => device.status === 'online').length,
+      tone: 'emerald',
+    },
+    {
+      label: 'Avg soil moisture',
+      value: `${(devices.reduce((sum, device) => sum + device.readings.moisture, 0) / (devices.length || 1)).toFixed(1)}%`,
+      tone: 'sky',
+    },
+    {
+      label: 'Active plots',
+      value: new Set(devices.map((device) => device.plotId)).size,
+      tone: 'amber',
+    },
+  ];
+
   return (
     <div className="space-y-6 fade-in">
       <Header
@@ -161,9 +180,28 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
         </div>
       </Header>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        {summaryCards.map((card) => (
+          <Card
+            key={card.label}
+            className={cn(
+              'border-0 bg-gradient-to-br shadow-[0_18px_35px_-28px_rgba(15,23,42,0.2)]',
+              card.tone === 'emerald' && 'from-emerald-500/10 to-emerald-50',
+              card.tone === 'sky' && 'from-sky-500/10 to-sky-50',
+              card.tone === 'amber' && 'from-amber-500/10 to-amber-50'
+            )}
+          >
+            <CardContent className="p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{card.label}</p>
+              <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">{card.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* Filters */}
-      <Card>
-        <CardContent className="py-4">
+      <Card className="border-slate-200/80 shadow-[0_16px_35px_-30px_rgba(15,23,42,0.25)]">
+        <CardContent className="py-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -206,24 +244,24 @@ const Devices = forwardRef<HTMLDivElement, object>(function Devices(_props, ref)
         </CardContent>
       </Card>
 
-      <Card className="premium-card border-white/5 shadow-2xl overflow-hidden">
+      <Card className="overflow-hidden border-slate-200/80 shadow-[0_20px_45px_-32px_rgba(15,23,42,0.22)]">
         <CardContent className="p-0">
           <div className="overflow-x-auto scrollbar-hide">
             <Table>
               <TableHeader>
-                <TableRow className="border-white/5 hover:bg-transparent">
-                  <TableHead className="w-[200px]">Device & Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Moisture</TableHead>
-                  <TableHead className="text-right">Temp</TableHead>
-                  <TableHead className="text-right">pH</TableHead>
-                  <TableHead className="text-right">EC</TableHead>
+                <TableRow className="border-slate-200/70 bg-slate-50/80 hover:bg-slate-50/80">
+                  <TableHead className="w-[200px] text-slate-700">Device & Location</TableHead>
+                  <TableHead className="text-slate-700">Status</TableHead>
+                  <TableHead className="text-right text-slate-700">Moisture</TableHead>
+                  <TableHead className="text-right text-slate-700">Temp</TableHead>
+                  <TableHead className="text-right text-slate-700">pH</TableHead>
+                  <TableHead className="text-right text-slate-700">EC</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedDevices.map((device) => (
-                  <TableRow key={device.id} className="group border-white/5 hover:bg-white/[0.02] transition-colors text-[13px]">
+                  <TableRow key={device.id} className="group border-slate-200/70 hover:bg-slate-50/80 transition-colors text-[13px]">
                     <TableCell>
                       <div className="py-1">
                         <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{device.name}</p>

@@ -51,12 +51,12 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
     <aside
       className={cn(
         'relative flex h-full flex-col border-r border-sidebar-border/50 bg-gradient-to-b from-sidebar-background to-sidebar-background/95 backdrop-blur-xl transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64',
+        collapsed ? 'w-20' : 'w-72',
         'lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:z-40'
       )}
     >
       {/* Header */}
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border/50 px-4 bg-gradient-to-r from-primary/5 via-transparent to-amber-400/5">
+      <div className="flex h-20 items-center justify-between border-b border-sidebar-border/50 px-4 bg-gradient-to-r from-primary/5 via-transparent to-amber-400/5">
         {!collapsed && (
           <Link to="/dashboard" className="flex items-center gap-3 group">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-emerald-500 to-amber-400 shadow-[0_12px_20px_-12px_rgba(16,185,129,0.8)] ring-2 ring-white/70">
@@ -67,8 +67,8 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
               />
             </div>
             <div>
-              <span className="font-bold text-sidebar-foreground">AgroView Pro</span>
-              <p className="text-[10px] text-muted-foreground -mt-0.5">Luxury Farm Tech</p>
+              <span className="text-[13px] font-bold tracking-tight text-sidebar-foreground">AgroView Pro</span>
+              <p className="-mt-0.5 text-[9px] text-muted-foreground uppercase tracking-[0.16em]">Luxury Farm Tech</p>
             </div>
           </Link>
         )}
@@ -83,8 +83,8 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 py-4">
-        <nav className="space-y-1 px-3">
+      <ScrollArea className="flex-1 py-5">
+        <nav className="space-y-2 px-3">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
@@ -95,10 +95,10 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
                 to={item.path}
                 onClick={() => onNavigate?.()}
                 className={cn(
-                  'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                  'group relative flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium tracking-[0.02em] transition-all duration-200',
                   isActive
                     ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
                 )}
               >
                 {isActive && (
@@ -109,9 +109,7 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
                   isActive ? 'text-primary scale-110' : 'group-hover:scale-110'
                 )} />
                 {!collapsed && (
-                  <>
-                    <span className="flex-1">{item.label}</span>
-                  </>
+                  <span className="flex-1 truncate opacity-90 group-hover:opacity-100 transition-opacity">{item.label}</span>
                 )}
               </Link>
             );
@@ -127,10 +125,10 @@ export function Sidebar({ onNavigate, collapsed: controlledCollapsed, onCollapse
               {user?.name?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-semibold text-sidebar-foreground">
+              <p className="truncate text-[13px] font-semibold text-sidebar-foreground">
                 {user?.name}
               </p>
-              <p className="truncate text-xs text-muted-foreground capitalize">
+              <p className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground capitalize">
                 {user?.role}
               </p>
             </div>

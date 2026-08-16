@@ -26,6 +26,74 @@ export interface FirebaseDevicesData {
   [plotId: string]: FirebasePlotDataNested | FirebasePlotData;
 }
 
+const toNumber = (value: unknown, fallback: number): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+};
+
+const isSensorValueObject = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return ['moisture', 'temperature', 'ph', 'ec'].some((key) => key in record);
+};
+
+const normalizeSensorReading = (rawReading: Record<string, unknown> | null | undefined): SensorReading => ({
+  moisture: toNumber(rawReading?.moisture, 0),
+  temperature: toNumber(rawReading?.temperature, 0),
+  ph: toNumber(rawReading?.ph, 7),
+  ec: toNumber(rawReading?.ec, 0),
+});
+
+const selectLatestReading = (plotData: any): { reading: FirebaseReading | null; latestTimestamp: string } => {
+  if (!plotData || typeof plotData !== 'object') {
+    return { reading: null, latestTimestamp: '' };
+  }
+
+  if (plotData.latest && typeof plotData.latest === 'object' && isSensorValueObject(plotData.latest)) {
+    const timestampValue = typeof plotData.latest.timestamp === 'string' ? plotData.latest.timestamp : '';
+    return {
+      reading: plotData.latest as FirebaseReading,
+      latestTimestamp: timestampValue || new Date().toISOString(),
+    };
+  }
+
+  if (plotData.readings && typeof plotData.readings === 'object') {
+    const timestampKeys = Object.keys(plotData.readings)
+      .filter((key) => isSensorValueObject(plotData.readings[key]))
+      .sort((a, b) => parseFirebaseTimestamp(a).getTime() - parseFirebaseTimestamp(b).getTime());
+
+    const latestKey = timestampKeys[timestampKeys.length - 1];
+    if (latestKey && plotData.readings[latestKey] && isSensorValueObject(plotData.readings[latestKey])) {
+      return {
+        reading: plotData.readings[latestKey] as FirebaseReading,
+        latestTimestamp: latestKey,
+      };
+    }
+  }
+
+  const candidateEntries = Object.entries(plotData)
+    .filter(([key]) => key !== 'latest' && key !== 'readings')
+    .filter(([, value]) => isSensorValueObject(value))
+    .sort(([a], [b]) => parseFirebaseTimestamp(a).getTime() - parseFirebaseTimestamp(b).getTime());
+
+  const latestEntry = candidateEntries[candidateEntries.length - 1];
+  if (latestEntry) {
+    return {
+      reading: latestEntry[1] as FirebaseReading,
+      latestTimestamp: latestEntry[0],
+    };
+  }
+
+  return { reading: null, latestTimestamp: '' };
+};
+
 // Fallback thresholds if not in localStorage
 export const fallbackThresholds: SensorThresholds = {
   moisture: { min: 30, max: 70 },
@@ -79,14 +147,32 @@ export const getDeviceStatus = (
 // Parse timestamp from Firebase key (format: 2026-01-15-02-53-41)
 // Parse timestamp from Firebase key (format: 2026-01-15-02-53-41 OR 2026-01-15_02-53-41)
 export const parseFirebaseTimestamp = (key: string): Date => {
-  // Replace underscores with hyphens to handle both formats
-  const normalizedKey = key.replace(/_/g, '-');
-  const parts = normalizedKey.split('-');
+  const normalizedKey = key.trim();
 
-  if (parts.length >= 6) {
-    const [year, month, day, hour, minute, second] = parts.map(Number);
-    return new Date(year, month - 1, day, hour, minute, second);
+  if (!normalizedKey) return new Date();
+
+  const match = normalizedKey.match(/(\d{4})[-_/\s](\d{1,2})[-_/\s](\d{1,2})(?:[-_/\s](\d{1,2})[-_:](\d{1,2})[-_:](\d{1,2}))?/);
+  if (match) {
+    const [, year, month, day, hour = '0', minute = '0', second = '0'] = match;
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second)
+    );
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
   }
+
+  const numericDate = new Date(normalizedKey);
+  if (!Number.isNaN(numericDate.getTime())) {
+    return numericDate;
+  }
+
   return new Date();
 };
 
@@ -106,47 +192,34 @@ export const extractHistoricalReadings = (
   plotData: any
 ): { timestamp: Date; readings: SensorReading }[] => {
   const readings: { timestamp: Date; readings: SensorReading }[] = [];
+  const entries = plotData && typeof plotData === 'object' ? Object.entries(plotData) : [];
 
-  // Handle nested structure with 'readings' object
-  if (plotData.readings && typeof plotData.readings === 'object') {
+  entries.forEach(([timestampKey, reading]: [string, any]) => {
+    if (timestampKey === 'latest' || timestampKey === 'readings') {
+      return;
+    }
+
+    if (reading && typeof reading === 'object' && isSensorValueObject(reading)) {
+      const timestamp = parseFirebaseTimestamp(timestampKey);
+      readings.push({
+        timestamp,
+        readings: normalizeSensorReading(reading),
+      });
+    }
+  });
+
+  if (plotData?.readings && typeof plotData.readings === 'object') {
     Object.entries(plotData.readings).forEach(([timestampKey, reading]: [string, any]) => {
-      if (typeof reading === 'object' && reading !== null) {
+      if (reading && typeof reading === 'object' && isSensorValueObject(reading)) {
         const timestamp = parseFirebaseTimestamp(timestampKey);
         readings.push({
           timestamp,
-          readings: {
-            moisture: reading.moisture ?? 0,
-            temperature: reading.temperature ?? 0,
-            ph: reading.ph ?? 7,
-            ec: reading.ec ?? 0,
-          },
-        });
-      }
-    });
-  } else {
-    // Handle flat structure (legacy)
-    Object.entries(plotData).forEach(([timestampKey, reading]: [string, any]) => {
-      // Skip special keys
-      if (timestampKey === 'latest' || timestampKey === 'readings') {
-        return;
-      }
-
-      if (typeof reading === 'object' && reading !== null) {
-        const timestamp = parseFirebaseTimestamp(timestampKey);
-        readings.push({
-          timestamp,
-          readings: {
-            moisture: reading.moisture ?? 0,
-            temperature: reading.temperature ?? 0,
-            ph: reading.ph ?? 7,
-            ec: reading.ec ?? 0,
-          },
+          readings: normalizeSensorReading(reading),
         });
       }
     });
   }
 
-  // Sort by timestamp ascending
   return readings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 };
 
@@ -178,49 +251,14 @@ export const transformFirebaseData = (
   const devicesList: Device[] = [];
 
   Object.entries(data).forEach(([plotId, plotData]: [string, any]) => {
-    let reading: FirebaseReading | null = null;
-    let latestTimestamp: string = '';
-
-    // Handle nested structure with 'latest' object
-    if (plotData.latest && typeof plotData.latest === 'object') {
-      reading = plotData.latest;
-      // Use timestamp from the latest object if available, otherwise use current time
-      if (reading.timestamp) {
-        latestTimestamp = reading.timestamp;
-      } else {
-        latestTimestamp = new Date().toISOString();
-      }
-    } else {
-      // Fallback: Find latest timestamp from flat structure or readings
-      const timestamps = Object.keys(plotData)
-        .filter(key => key !== 'latest' && key !== 'readings')
-        .sort();
-
-      if (timestamps.length > 0) {
-        latestTimestamp = timestamps[timestamps.length - 1];
-        reading = plotData[latestTimestamp];
-      } else if (plotData.readings) {
-        // Try to get from readings object
-        const readingTimestamps = Object.keys(plotData.readings).sort();
-        if (readingTimestamps.length > 0) {
-          latestTimestamp = readingTimestamps[readingTimestamps.length - 1];
-          reading = plotData.readings[latestTimestamp];
-        }
-      }
-    }
+    const { reading, latestTimestamp } = selectLatestReading(plotData);
 
     if (reading && typeof reading === 'object') {
       const deviceId = `device-${plotId}`;
       const thresholds = customThresholds.get(deviceId) || defaultThresholds;
+      const sensorReading = normalizeSensorReading(reading);
 
-      const sensorReading: SensorReading = {
-        moisture: reading.moisture ?? 0,
-        temperature: reading.temperature ?? 0,
-        ph: reading.ph ?? 7,
-        ec: reading.ec ?? 0,
-      };
-
-      const lastUpdated = latestTimestamp 
+      const lastUpdated = latestTimestamp
         ? parseFirebaseTimestamp(latestTimestamp)
         : new Date();
       const status = getDeviceStatus(lastUpdated, offlineAfterMinutes, offlineDetection);

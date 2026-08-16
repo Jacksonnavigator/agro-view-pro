@@ -1,3 +1,4 @@
+import { getFirebasePlotIdsFromSnapshot } from '@/hooks/useFirebaseData';
 import { Alert, Device, SensorReading, SensorThresholds } from '@/types/device';
 
 export interface FirebaseReading {
@@ -213,3 +214,29 @@ export const transformFirebaseData = (
 
   return devicesList;
 };
+
+describe('Firebase structure detection', () => {
+  it('detects root-level plot ids when data is nested under latest/readings', () => {
+    const result = getFirebasePlotIdsFromSnapshot({
+      users: {},
+      settings: {},
+      Plot_1: {
+        latest: { moisture: 20.3, temperature: 25, ph: 6.5, ec: 1.2, timestamp: '2026-08-14 22:21:57' },
+        readings: {
+          '2026-08-11_08-03-34': { moisture: 18, temperature: 24, ph: 6.2, ec: 1.0 },
+        },
+      },
+      Plot_2: {
+        latest: { moisture: 22, temperature: 26, ph: 6.8, ec: 1.3, timestamp: '2026-08-14 21:45:00' },
+        readings: {
+          '2026-08-11_08-05-34': { moisture: 21, temperature: 25, ph: 6.7, ec: 1.2 },
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      plotIds: ['Plot_1', 'Plot_2'],
+      source: 'root',
+    });
+  });
+});

@@ -1,6 +1,6 @@
 // Hook to subscribe to Firebase Realtime Database for recent sensor data only.
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { auth, database, ref, onValue, set, query, orderByKey, startAt, limitToLast } from '@/lib/firebase';
+import { auth, database, ref, onValue, set, query, orderByKey, startAt, limitToLast, get } from '@/lib/firebase';
 import { AppSettings, Device, HistoricalReading, SensorThresholds } from '@/types/device';
 import {
   FirebasePlotData,
@@ -46,26 +46,40 @@ function mergeSettings(value: Partial<AppSettings> | null | undefined): AppSetti
   };
 }
 
-async function fetchPlotIds(): Promise<string[]> {
-  const databaseUrl = import.meta.env.VITE_FIREBASE_DATABASE_URL as string | undefined;
-  if (!databaseUrl) {
-    throw new Error('Missing VITE_FIREBASE_DATABASE_URL');
+export function getFirebasePlotIdsFromSnapshot(snapshotValue: unknown): { plotIds: string[]; source: 'devices' | 'root' } {
+  const root = snapshotValue && typeof snapshotValue === 'object' ? snapshotValue as Record<string, unknown> : {};
+
+  if (root.devices && typeof root.devices === 'object' && !Array.isArray(root.devices)) {
+    const devicePlotIds = Object.keys(root.devices as Record<string, unknown>);
+    if (devicePlotIds.length > 0) {
+      return { plotIds: devicePlotIds, source: 'devices' };
+    }
   }
 
-  const token = await auth.currentUser?.getIdToken();
-  const url = new URL(`${databaseUrl.replace(/\/$/, '')}/devices.json`);
-  url.searchParams.set('shallow', 'true');
-  if (token) {
-    url.searchParams.set('auth', token);
+  const rootPlotIds = Object.keys(root).filter((key) => {
+    if (key === 'settings' || key === 'users' || key === 'devices') return false;
+
+    const value = root[key];
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+
+    const record = value as Record<string, unknown>;
+    return !!record.latest || !!record.readings;
+  });
+
+  if (rootPlotIds.length > 0) {
+    return { plotIds: rootPlotIds, source: 'root' };
   }
 
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    throw new Error(`Unable to load device registry (${response.status})`);
+  return { plotIds: [], source: 'root' };
+}
+
+async function fetchPlotIds(): Promise<{ plotIds: string[]; source: 'devices' | 'root' }> {
+  const snapshot = await get(ref(database));
+  if (!snapshot.exists()) {
+    return { plotIds: [], source: 'root' };
   }
 
-  const keys = (await response.json()) as Record<string, true> | null;
-  return Object.keys(keys || {});
+  return getFirebasePlotIdsFromSnapshot(snapshot.val());
 }
 
 export function useFirebaseData() {
@@ -144,7 +158,7 @@ export function useFirebaseData() {
 
     const subscribe = async () => {
       try {
-        const plotIds = await fetchPlotIds();
+        const { plotIds, source } = await fetchPlotIds();
         if (cancelled) return;
 
         if (plotIds.length === 0) {
@@ -171,41 +185,57 @@ export function useFirebaseData() {
         };
 
         plotIds.forEach((plotId) => {
-          const latestQuery = query(ref(database, `devices/${plotId}`), orderByKey(), limitToLast(1));
+          const latestRef = source === 'devices'
+            ? ref(database, `devices/${plotId}`)
+            : ref(database, `${plotId}/latest`);
+
+          const latestQuery = source === 'devices'
+            ? query(latestRef, orderByKey(), limitToLast(1))
+            : latestRef;
+
           const latestUnsubscribe = onValue(
             latestQuery,
             (snapshot) => {
-              latestByPlot.set(plotId, snapshot.exists() ? snapshot.val() as FirebasePlotData : {});
+              const latestValue = snapshot.exists() ? snapshot.val() : null;
+              if (source === 'root' && latestValue && typeof latestValue === 'object' && !('latest' in latestValue) && !('readings' in latestValue)) {
+                latestByPlot.set(plotId, { latest: latestValue as FirebasePlotData });
+              } else if (source === 'root') {
+                latestByPlot.set(plotId, { latest: latestValue as FirebasePlotData } as FirebasePlotData);
+              } else {
+                latestByPlot.set(plotId, (latestValue as FirebasePlotData) || {});
+              }
               rebuildDevices();
               markInitialSnapshot();
             },
             (err) => {
-              // Firebase latest-reading error
               setError(`Connection error: ${err.message}`);
               setConnectionStatus('disconnected');
               setIsLoading(false);
             }
           );
 
-          const historyQuery = query(
-            ref(database, `devices/${plotId}`),
-            orderByKey(),
-            startAt(cutoffKey),
-            limitToLast(HISTORY_POINT_LIMIT)
-          );
+          const historyRef = source === 'devices'
+            ? ref(database, `devices/${plotId}`)
+            : ref(database, `${plotId}/readings`);
+
+          const historyQuery = source === 'devices'
+            ? query(historyRef, orderByKey(), startAt(cutoffKey), limitToLast(HISTORY_POINT_LIMIT))
+            : historyRef;
+
           const historyUnsubscribe = onValue(
             historyQuery,
             (snapshot) => {
               const deviceId = `device-${plotId}`;
-              historiesByDevice.set(
-                deviceId,
-                snapshot.exists() ? extractHistoricalReadings(snapshot.val() as FirebasePlotData) : []
-              );
+              const historyValue = snapshot.exists() ? snapshot.val() : null;
+              const normalizedHistory = historyValue && typeof historyValue === 'object'
+                ? extractHistoricalReadings(historyValue as FirebasePlotData)
+                : [];
+
+              historiesByDevice.set(deviceId, normalizedHistory);
               rebuildDevices();
               markInitialSnapshot();
             },
             (err) => {
-              // Firebase history error
               setError(`Connection error: ${err.message}`);
               setConnectionStatus('disconnected');
               setIsLoading(false);

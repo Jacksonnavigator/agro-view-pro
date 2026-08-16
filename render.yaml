@@ -1,49 +1,46 @@
 services:
-  # Web Service Configuration
+  # Render Static Site configuration for Vite frontend
   - type: web
     name: agro-view-pro
-    runtime: node
+    runtime: static
     plan: free  # Change to 'starter' or 'standard' for production
     branch: main
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
-    
+
     # Environment Variables
     # IMPORTANT: Set these values in the Render Dashboard
     # Do NOT commit actual credentials to this file
     envVars:
       - key: VITE_FIREBASE_API_KEY
-        sync: false  # Set manually in Render Dashboard
-      
+        sync: false
+
       - key: VITE_FIREBASE_AUTH_DOMAIN
         sync: false
-      
+
       - key: VITE_FIREBASE_DATABASE_URL
         sync: false
-      
+
       - key: VITE_FIREBASE_PROJECT_ID
         sync: false
-      
+
       - key: VITE_FIREBASE_STORAGE_BUCKET
         sync: false
-      
+
       - key: VITE_FIREBASE_MESSAGING_SENDER_ID
         sync: false
-      
+
       - key: VITE_FIREBASE_APP_ID
         sync: false
-      
+
       - key: VITE_FIREBASE_MEASUREMENT_ID
         sync: false
-    
+
     # Routing Configuration for SPA
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-    
-    # Health Check Configuration
-    healthCheckPath: /
-    
+
     # Auto-deploy on push to main branch
     autoDeploy: true

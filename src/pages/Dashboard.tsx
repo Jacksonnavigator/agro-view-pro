@@ -116,12 +116,32 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
   }
 
   return (
-    <div className="space-y-6 fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <Header
-          title="Dashboard Overview"
-          subtitle="Real-time monitoring of all soil sensor devices"
-        />
+    <div className="space-y-8 fade-in -mt-1">
+      <div className="relative overflow-hidden rounded-[28px] border border-emerald-200/80 bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-600 p-6 text-white shadow-[0_30px_60px_-35px_rgba(6,95,70,0.9)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.18),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.35),_transparent_35%)]" />
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-50/90">
+              <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />
+              AgroView Pro
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Farm intelligence overview</h1>
+            <p className="mt-2 max-w-xl text-sm text-emerald-50/80 sm:text-base">
+              Real-time soil health, climate conditions, and operational performance across every active zone.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[260px]">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-100/85">Online</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-white">{deviceFreshness.onlineCount}</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-100/85">Zones</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-white">{plots.length}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {connectionStatus === 'disconnected' && (
@@ -142,18 +162,21 @@ const Dashboard = forwardRef<HTMLDivElement, object>(function Dashboard(_props, 
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Device Status</h2>
-          <span className="text-sm text-muted-foreground">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Device Status</h2>
+            <p className="text-sm text-muted-foreground">Monitoring the current operational state of every field node</p>
+          </div>
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
             {devices.length} devices
           </span>
         </div>
 
         {/* Tabs for plot-based filtering */}
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6 p-1 bg-white/5 border-white/10 rounded-2xl glass">
-            <TabsTrigger value="all" className="rounded-xl px-6">All Devices</TabsTrigger>
+          <TabsList className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-1 shadow-sm">
+            <TabsTrigger value="all" className="rounded-xl px-5 text-sm font-medium">All Devices</TabsTrigger>
             {plots.map((plot) => (
-              <TabsTrigger key={plot.id} value={plot.id} className="rounded-xl px-6">
+              <TabsTrigger key={plot.id} value={plot.id} className="rounded-xl px-5 text-sm font-medium">
                 {plot.name}
               </TabsTrigger>
             ))}

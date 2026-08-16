@@ -9,11 +9,11 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Area,
 } from 'recharts';
 import { Device, HistoricalReading, TimeRange } from '@/types/device';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -29,6 +29,84 @@ import { CHART_CONFIG } from '@/config/app-config';
 interface DeviceComparisonChartProps {
   devices: Device[];
   className?: string;
+}
+
+interface BuildComparisonChartDataInput {
+  deviceHistories: Record<string, HistoricalReading[]>;
+  selectedDevices: string[];
+  selectedParameter: string;
+  rangeHours: number;
+}
+
+export function buildComparisonChartData({
+  deviceHistories,
+  selectedDevices,
+  selectedParameter,
+  rangeHours,
+}: BuildComparisonChartDataInput) {
+  const activeDeviceIds = selectedDevices.filter((deviceId) => deviceHistories[deviceId]?.length);
+
+  if (activeDeviceIds.length === 0) {
+    return [];
+  }
+
+  const bucketMs = rangeHours <= 1
+    ? 5 * 60 * 1000
+    : rangeHours <= 24
+      ? 30 * 60 * 1000
+      : rangeHours <= 168
+        ? 2 * 60 * 60 * 1000
+        : 12 * 60 * 60 * 1000;
+
+  const allTimestamps = activeDeviceIds
+    .flatMap((deviceId) => deviceHistories[deviceId].map((reading) => reading.timestamp.getTime()))
+    .filter((value) => Number.isFinite(value));
+
+  if (allTimestamps.length === 0) {
+    return [];
+  }
+
+  const minTime = Math.min(...allTimestamps);
+  const maxTime = Math.max(...allTimestamps);
+  const chartBuckets = new Map<number, Record<string, number | string | null>>();
+
+  for (let bucketStart = minTime; bucketStart <= maxTime; bucketStart += bucketMs) {
+    chartBuckets.set(bucketStart, { time: bucketStart });
+  }
+
+  activeDeviceIds.forEach((deviceId) => {
+    const history = [...deviceHistories[deviceId]].sort(
+      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+    );
+
+    let readingIndex = 0;
+    for (const [bucketStart] of chartBuckets) {
+      const bucketEnd = bucketStart + bucketMs;
+      let lastValue: number | null = null;
+
+      while (readingIndex < history.length && history[readingIndex].timestamp.getTime() < bucketStart) {
+        readingIndex += 1;
+      }
+
+      while (readingIndex < history.length && history[readingIndex].timestamp.getTime() < bucketEnd) {
+        const reading = history[readingIndex];
+        const value = reading.readings[selectedParameter as keyof typeof reading.readings] as number | undefined;
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          lastValue = value;
+        }
+        readingIndex += 1;
+      }
+
+      if (lastValue !== null) {
+        const point = chartBuckets.get(bucketStart);
+        if (point) {
+          point[deviceId] = lastValue;
+        }
+      }
+    }
+  });
+
+  return Array.from(chartBuckets.values());
 }
 
 const timeRanges: TimeRange[] = CHART_CONFIG.timeRanges as unknown as TimeRange[];
@@ -63,29 +141,43 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
 
   const currentRange = timeRanges.find((r) => r.value === selectedRange) || timeRanges[1];
 
-  // Generate comparison data using real Firebase hook
   const chartData = useMemo(() => {
     if (selectedDevices.length === 0) return [];
 
-    // Get historical data for each selected device from Firebase
     const deviceHistories: Record<string, HistoricalReading[]> = {};
     selectedDevices.forEach((deviceId) => {
       deviceHistories[deviceId] = getDeviceHistory(deviceId, currentRange.hours);
     });
 
-    const buckets = new Map<number, Record<string, number | string>>();
-    selectedDevices.forEach((deviceId) => {
-      deviceHistories[deviceId].forEach((reading) => {
-        const minute = Math.floor(reading.timestamp.getTime() / 60000) * 60000;
-        const dataPoint = buckets.get(minute) || { time: minute };
-        dataPoint[deviceId] = reading.readings[selectedParameter as keyof typeof reading.readings] as number;
-        buckets.set(minute, dataPoint);
-      });
+    return buildComparisonChartData({
+      deviceHistories,
+      selectedDevices,
+      selectedParameter,
+      rangeHours: currentRange.hours,
     });
-
-    return Array.from(buckets.values())
-      .sort((a, b) => (a.time as number) - (b.time as number));
   }, [selectedDevices, selectedParameter, currentRange.hours, getDeviceHistory]);
+
+  const summaryStats = useMemo(() => {
+    const allValues = selectedDevices
+      .flatMap((deviceId) => chartData.map((point) => Number(point[deviceId] ?? NaN)))
+      .filter((value) => Number.isFinite(value));
+
+    if (allValues.length === 0) {
+      return { average: 0, min: 0, max: 0 };
+    }
+
+    const average = allValues.reduce((sum, value) => sum + value, 0) / allValues.length;
+    return {
+      average,
+      min: Math.min(...allValues),
+      max: Math.max(...allValues),
+    };
+  }, [chartData, selectedDevices]);
+
+  const liveDevices = devices.filter((device) => selectedDevices.includes(device.id) && device.status === 'online').length;
+  const trendDirection = selectedDevices.length > 1 && chartData.length > 1
+    ? Number(chartData[chartData.length - 1]?.[selectedDevices[0]] ?? 0) - Number(chartData[0]?.[selectedDevices[0]] ?? 0)
+    : 0;
 
   const toggleDevice = (deviceId: string) => {
     setSelectedDevices((prev) =>
@@ -101,7 +193,12 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
     <Card className={cn('', className)}>
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base">Device Comparison</CardTitle>
+          <div className="space-y-1">
+            <CardTitle className="text-base">Device Comparison</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Avg {summaryStats.average.toFixed(1)}{selectedParam?.unit || ''} · Range {summaryStats.min.toFixed(1)}{selectedParam?.unit || ''} to {summaryStats.max.toFixed(1)}{selectedParam?.unit || ''}
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <Select value={selectedParameter} onValueChange={setSelectedParameter}>
               <SelectTrigger className="w-[180px] h-8">
@@ -135,6 +232,26 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Average {selectedParam?.label}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              {summaryStats.average.toFixed(1)}
+              <span className="ml-1 text-sm text-muted-foreground">{selectedParam?.unit || ''}</span>
+            </p>
+          </div>
+          <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Online sensors</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{liveDevices}<span className="ml-1 text-sm text-muted-foreground">/{selectedDevices.length}</span></p>
+          </div>
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Trend</p>
+            <p className={cn('mt-2 text-2xl font-semibold tracking-tight', trendDirection >= 0 ? 'text-emerald-500' : 'text-amber-500')}>
+              {trendDirection >= 0 ? '+' : ''}{trendDirection.toFixed(1)}
+              <span className="ml-1 text-sm text-muted-foreground">{selectedParam?.unit || ''}</span>
+            </p>
+          </div>
+        </div>
         {/* Device selection */}
         <div className="flex flex-wrap gap-2">
           {devices.map((device, index) => (
@@ -167,12 +284,23 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
             No readings in the selected time range
           </div>
         ) : (
-          <div className="h-[300px] w-full">
+          <div className="h-[360px] w-full rounded-2xl border border-border/60 bg-gradient-to-b from-background to-muted/20 p-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chartData}
-                margin={{ top: 5, right: 16, left: 0, bottom: 36 }}
+                margin={{ top: 10, right: 18, left: 10, bottom: 30 }}
               >
+                <defs>
+                  {selectedDevices.map((deviceId, index) => {
+                    const deviceColor = deviceColors[devices.findIndex((d) => d.id === deviceId) % deviceColors.length];
+                    return (
+                      <linearGradient key={`${deviceId}-gradient`} id={`area-${deviceId}`} x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor={deviceColor} stopOpacity={0.25} />
+                        <stop offset="100%" stopColor={deviceColor} stopOpacity={0.04} />
+                      </linearGradient>
+                    );
+                  })}
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
 
                 <XAxis
@@ -191,7 +319,7 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
-                  width={40}
+                  width={42}
                   label={{
                     value: selectedParam?.unit || '',
                     angle: -90,
@@ -214,25 +342,41 @@ export function DeviceComparisonChart({ devices, className }: DeviceComparisonCh
                     }
                     return value;
                   }}
+                  formatter={(value: number | string | Array<number | string>, name) => {
+                    const numericValue = Array.isArray(value) ? Number(value[0]) : Number(value);
+                    return [`${numericValue.toFixed(1)}${selectedParam?.unit || ''}`, name];
+                  }}
                 />
                 <Legend
                   wrapperStyle={{ paddingTop: 16 }}
                   iconType="circle"
                   iconSize={8}
                 />
-                {selectedDevices.map((deviceId, index) => {
+                {selectedDevices.map((deviceId) => {
                   const device = devices.find((d) => d.id === deviceId);
+                  const stroke = deviceColors[devices.findIndex((d) => d.id === deviceId) % deviceColors.length];
                   return (
-                    <Line
-                      key={deviceId}
-                      type="monotone"
-                      dataKey={deviceId}
-                      name={device?.name || deviceId}
-                      stroke={deviceColors[devices.findIndex((d) => d.id === deviceId) % deviceColors.length]}
-                      strokeWidth={2}
-                    dot={chartData.length <= CHART_CONFIG.dataPointThreshold ? { r: CHART_CONFIG.dotSize.normal, strokeWidth: 1 } : false}
-                    activeDot={{ r: CHART_CONFIG.dotSize.active, strokeWidth: 0 }}
-                    />
+                    <>
+                      <Area
+                        type="monotone"
+                        dataKey={deviceId}
+                        stroke="none"
+                        fill={`url(#area-${deviceId})`}
+                        isAnimationActive={false}
+                        connectNulls
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey={deviceId}
+                        name={device?.name || deviceId}
+                        stroke={stroke}
+                        strokeWidth={2.5}
+                        connectNulls={true}
+                        dot={chartData.length <= CHART_CONFIG.dataPointThreshold ? { r: CHART_CONFIG.dotSize.normal, strokeWidth: 1 } : false}
+                        activeDot={{ r: CHART_CONFIG.dotSize.active, strokeWidth: 0 }}
+                        isAnimationActive={false}
+                      />
+                    </>
                   );
                 })}
               </LineChart>

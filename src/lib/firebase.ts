@@ -13,7 +13,6 @@ import {
   limitToLast,
 } from "firebase/database";
 
-// Validate that all required environment variables are present
 const requiredEnvVars = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_AUTH_DOMAIN',
@@ -24,27 +23,26 @@ const requiredEnvVars = [
   'VITE_FIREBASE_APP_ID',
 ] as const;
 
-const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName]);
+const missingVars = requiredEnvVars.filter((varName) => !import.meta.env[varName]);
 
 if (missingVars.length > 0) {
   throw new Error(
     `Missing required Firebase environment variables: ${missingVars.join(', ')}\n` +
-    'Please create a .env file based on .env.example and add your Firebase credentials.'
+    'Please create a .env file and add your Firebase credentials.'
   );
 }
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-};
+const firebaseConfig = Object.freeze({
+  apiKey: String(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: String(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  databaseURL: String(import.meta.env.VITE_FIREBASE_DATABASE_URL),
+  projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: String(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: String(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: String(import.meta.env.VITE_FIREBASE_APP_ID),
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID ? String(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) : undefined,
+});
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const database = getDatabase(app);

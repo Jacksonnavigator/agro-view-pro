@@ -70,11 +70,15 @@ export function DashboardLayout() {
         <main
           className={cn(
             'flex-1 h-full overflow-y-auto transition-[padding] duration-300 scroll-smooth',
-            isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+            isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
           )}
         >
-          <div className="container px-4 py-6 md:px-6 lg:py-8 max-w-7xl mx-auto pb-24 lg:pb-8">
-            <Outlet />
+          <div className="w-full">
+            <div className="container mx-auto max-w-[1400px] px-4 py-6 md:px-5 lg:px-7 lg:py-8 pb-24 lg:pb-12 xl:px-8">
+              <div className="space-y-8">
+                <Outlet />
+              </div>
+            </div>
           </div>
         </main>
       </div>

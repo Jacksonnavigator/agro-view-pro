@@ -9,6 +9,15 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { HistoricalReading } from '@/types/device';
@@ -21,6 +30,8 @@ import { UI_CONFIG } from '@/config/app-config';
 const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(_props, ref) {
     const { devices, getDeviceHistory, isLoading } = useDevices();
     const [hours, setHours] = useState(24);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = UI_CONFIG.pagination.itemsPerPage;
 
     const allRecords = useMemo(() => {
         const records: Array<{ deviceName: string; plotName: string } & HistoricalReading> = [];
@@ -36,6 +47,24 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
         });
         return records.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     }, [devices, getDeviceHistory, hours]);
+
+    const totalPages = Math.max(1, Math.ceil(allRecords.length / itemsPerPage));
+    const paginatedRecords = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return allRecords.slice(startIndex, startIndex + itemsPerPage);
+    }, [allRecords, currentPage, itemsPerPage]);
+
+    const getPageNumbers = () => {
+        const pages: Array<number | 'ellipsis'> = [];
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                pages.push(i);
+            } else if ((i === currentPage - 2 && i > 1) || (i === currentPage + 2 && i < totalPages)) {
+                pages.push('ellipsis');
+            }
+        }
+        return Array.from(new Set(pages));
+    };
 
     return (
         <div className="space-y-6 fade-in">
@@ -102,7 +131,7 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    allRecords.slice(0, UI_CONFIG.pagination.maxDisplayedRecords).map((record, i) => (
+                                    paginatedRecords.map((record, i) => (
                                         <TableRow key={`${record.deviceName}-${record.timestamp.getTime()}-${i}`} className="border-white/5 hover:bg-white/[0.03] transition-colors text-[12px]">
                                             <TableCell className="font-mono text-muted-foreground whitespace-nowrap">
                                                 {format(record.timestamp, 'MMM d, HH:mm:ss')}
@@ -126,9 +155,58 @@ const MasterRecords = forwardRef<HTMLDivElement, object>(function MasterRecords(
                 </CardContent>
             </Card>
 
+            {allRecords.length > 0 && totalPages > 1 && (
+                <div className="flex justify-center pt-2">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setCurrentPage((page) => Math.max(1, page - 1));
+                                    }}
+                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+
+                            {getPageNumbers().map((page, index) => (
+                                <PaginationItem key={`${page}-${index}`}>
+                                    {page === 'ellipsis' ? (
+                                        <PaginationEllipsis />
+                                    ) : (
+                                        <PaginationLink
+                                            href="#"
+                                            isActive={page === currentPage}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                setCurrentPage(page as number);
+                                            }}
+                                        >
+                                            {page}
+                                        </PaginationLink>
+                                    )}
+                                </PaginationItem>
+                            ))}
+
+                            <PaginationItem>
+                                <PaginationNext
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setCurrentPage((page) => Math.min(totalPages, page + 1));
+                                    }}
+                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+
             <div className="flex justify-between items-center px-2">
                 <div className="text-[11px] text-muted-foreground">
-                    Showing latest {Math.min(allRecords.length, UI_CONFIG.pagination.maxDisplayedRecords)} transmissions across {devices.length} active units
+                    Showing {Math.min(allRecords.length, (currentPage - 1) * itemsPerPage + paginatedRecords.length)} of {allRecords.length} transmissions across {devices.length} active units
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground animate-pulse">
                     <div className="h-1.5 w-1.5 rounded-full bg-success" />
